@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phonics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Baloo+2:wght@600;800&family=ZCOOL+KuaiLe&display=swap">
+<style>
+/* Layout: header with mode tabs and range filter; "learn" = sound strip + one sound card with three picture words; "test" = one question at a time.
+   Vowels are red and consonants blue, the usual phonics classroom convention. Letters use Andika, a face made for early readers (single-storey a and g). */
+:root {
+  --bg: #eef3f6;
+  --fg: #1d2a33;
+  --muted: #5b6b76;
+  --card: #ffffff;
+  --soft: #f6f9fb;
+  --line: #d5dfe6;
+  --focus: #2b6cb0;
+  --vowel: #d6402b;
+  --cons: #2468c9;
+  --good: #1f8a56;
+  --miss: #c2462a;
+  --tip: #fff6dc;
+  --font-letter: "Andika", "Comic Sans MS", system-ui, sans-serif;
+  --font-en: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --font-zh: "ZCOOL KuaiLe", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-ui: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141c22; --fg: #eef3f6; --muted: #9aabb6; --card: #1f2a32; --soft: #18222a; --line: #33424d;
+    --focus: #7fb3ee; --vowel: #ff7a62; --cons: #6aa8f5; --good: #4cc98b; --miss: #ff8a66; --tip: #2c2a1f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141c22; --fg: #eef3f6; --muted: #9aabb6; --card: #1f2a32; --soft: #18222a; --line: #33424d;
+  --focus: #7fb3ee; --vowel: #ff7a62; --cons: #6aa8f5; --good: #4cc98b; --miss: #ff8a66; --tip: #2c2a1f;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html, body { background: var(--bg); color: var(--fg); }
+body { margin: 0; font: 14px var(--font-ui); -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+button { font-family: inherit; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+.wrap {
+  max-width: 1040px; margin: 0 auto;
+  padding-block: 24px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px;
+}
+.home { display: inline-block; margin-bottom: 8px; color: var(--muted); font-size: 15px; font-weight: 600; text-decoration: none; }
+.home:hover { color: var(--fg); }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+h1 { margin: 0; font-family: var(--font-en); font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1.05; }
+h1 span { font-family: var(--font-zh); font-weight: 400; font-size: .7em; color: var(--muted); margin-left: .4em; }
+.hint { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+
+.switches { display: flex; flex-wrap: wrap; gap: 10px; }
+.tabs { display: inline-flex; flex-wrap: wrap; background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.tabs button { all: unset; cursor: pointer; font: 700 15px var(--font-ui); padding: 7px 16px; border-radius: 999px; color: var(--muted); }
+.tabs button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.tabs button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.v { --tone: var(--vowel); }
+.c { --tone: var(--cons); }
+
+/* Learn: sound strip */
+.strip { display: flex; flex-wrap: wrap; gap: 14px 22px; }
+.group { display: grid; gap: 6px; }
+.group-label { font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+.tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+.tile {
+  font: 700 22px/1 var(--font-letter); color: var(--tone); background: var(--card);
+  border: 2px solid var(--line); border-radius: 12px; min-width: 44px; height: 44px; padding: 0 8px; cursor: pointer;
+}
+.tile[aria-pressed="true"] { background: var(--tone); color: var(--card); border-color: var(--tone); }
+
+/* Learn: sound card */
+.sound {
+  display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 24px;
+  background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 24px;
+}
+@media (max-width: 720px) { .sound { grid-template-columns: minmax(0, 1fr); padding: 18px; } }
+.letter-side { display: grid; align-content: start; gap: 12px; }
+.letter { font: 700 clamp(84px, 16vw, 132px)/1 var(--font-letter); color: var(--tone); letter-spacing: .02em; }
+.ipa { font: 400 26px var(--font-letter); color: var(--muted); }
+.kind { font-size: 13px; font-weight: 700; color: var(--tone); letter-spacing: .04em; }
+.tip { background: var(--tip); border-radius: 14px; padding: 12px 14px; font-size: 15px; line-height: 1.6; }
+.tip b { display: block; font-size: 12px; color: var(--muted); letter-spacing: .06em; margin-bottom: 2px; }
+.words { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-content: start; }
+@media (max-width: 460px) { .words { gap: 8px; } }
+.word {
+  display: grid; justify-items: center; gap: 8px; padding: 18px 8px 14px;
+  background: var(--soft); border: 2px solid var(--line); border-radius: 18px; cursor: pointer; color: var(--fg);
+}
+.word:hover { border-color: var(--tone); }
+.emoji { font-size: clamp(48px, 9vw, 76px); line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.wtext { font: 700 clamp(18px, 3.2vw, 26px)/1.1 var(--font-letter); overflow-wrap: anywhere; text-align: center; }
+.wtext mark { background: none; color: var(--tone); text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 4px; }
+.say { font-size: 12px; color: var(--muted); }
+.nav { display: flex; justify-content: space-between; gap: 12px; grid-column: 1 / -1; }
+
+.pill, .big {
+  color: var(--fg); background: var(--card); border: 2px solid var(--line); cursor: pointer;
+}
+.pill { font: 600 15px var(--font-ui); border-radius: 999px; padding: 8px 16px; }
+.big { font: 700 18px var(--font-ui); border-radius: 16px; padding: 12px 24px; box-shadow: 0 3px 0 var(--line); }
+.big.good { border-color: var(--good); color: var(--good); }
+.big.miss { border-color: var(--miss); color: var(--miss); }
+
+/* Test */
+.test { display: grid; justify-items: center; gap: 18px; }
+.progress { width: min(380px, 100%); display: grid; gap: 6px; }
+.progress-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--good); border-radius: inherit; transition: width .3s; }
+.stage {
+  width: min(460px, 100%); background: var(--card); border: 2px solid var(--line); border-radius: 24px;
+  padding: 24px 18px; display: grid; justify-items: center; gap: 16px; text-align: center;
+}
+.prompt { font-size: 17px; font-weight: 600; }
+.q-emoji { font-size: 110px; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.choice {
+  min-width: 80px; height: 80px; padding: 0 14px; border-radius: 20px; cursor: pointer;
+  background: var(--soft); border: 3px solid var(--line); color: var(--tone);
+  font: 700 44px/1 var(--font-letter);
+}
+.choice.pic { font-size: 54px; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; min-width: 96px; height: 96px; }
+.choice.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--soft)); }
+.choice.wrong { border-color: var(--miss); opacity: .55; }
+.choice:disabled { cursor: default; }
+.answer { min-height: 34px; font: 700 26px var(--font-letter); }
+.answer mark { background: none; color: var(--tone); text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 4px; }
+.feedback { font-weight: 700; font-size: 16px; min-height: 22px; }
+.feedback.ok { color: var(--good); }
+.feedback.no { color: var(--miss); }
+.listen { font-size: 40px; width: 96px; height: 96px; border-radius: 50%; cursor: pointer; background: var(--soft); border: 3px solid var(--line); }
+
+/* Flip test card */
+.card { all: unset; cursor: pointer; display: block; width: min(300px, 78vw); aspect-ratio: 3 / 4; perspective: 900px; border-radius: 22px; }
+.card:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+.inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.3,1.4,.5,1); }
+.card.flipped .inner { transform: rotateY(180deg); }
+.face {
+  position: absolute; inset: 0; border-radius: 22px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border: 2px solid var(--line); background: var(--card); box-shadow: 0 4px 0 var(--line);
+  display: grid; place-items: center; align-content: center; gap: 10px; padding: 16px; text-align: center;
+}
+.face .letter { font-size: 120px; }
+.back { transform: rotateY(180deg); background: var(--soft); }
+.back .ipa { font-size: 30px; color: var(--tone); }
+.mini { display: flex; gap: 10px; justify-content: center; }
+.mini span { display: grid; gap: 4px; justify-items: center; font: 700 15px var(--font-letter); }
+.mini i { font-style: normal; font-size: 40px; line-height: 1; }
+
+.result { display: grid; justify-items: center; gap: 14px; text-align: center; max-width: 600px; margin: 0 auto; }
+.score { font-family: var(--font-en); font-weight: 800; font-size: 64px; line-height: 1; font-variant-numeric: tabular-nums; }
+.score small { font-size: .45em; color: var(--muted); }
+.result p { margin: 0; font-size: 17px; }
+.missed { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.chip { display: grid; justify-items: center; gap: 2px; min-width: 86px; padding: 10px 8px; background: var(--card); border: 2px solid var(--line); border-radius: 14px; font: 700 15px var(--font-letter); }
+.chip i { font-style: normal; font-size: 34px; line-height: 1.1; }
+.chip mark { background: none; color: var(--tone); }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+
+/* Learn: hidden pictures */
+.word .emoji.veil { filter: blur(14px) grayscale(1); opacity: .35; }
+.word .say.veil-say { color: var(--tone); font-weight: 700; }
+
+/* Listening game */
+.ref { display: grid; justify-items: center; gap: 6px; }
+.pick { display: grid; justify-items: center; gap: 6px; }
+.ear { font-size: 13px; padding: 4px 12px; }
+
+/* Blending */
+.learned { display: grid; gap: 8px; background: var(--card); border: 2px solid var(--line); border-radius: 18px; padding: 14px; }
+.learned .tile { font-size: 18px; min-width: 38px; height: 38px; }
+.learned-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.blend { display: flex; justify-content: center; gap: 10px; transition: gap .45s ease; }
+.blend.merged { gap: 0; }
+.ltr {
+  display: grid; justify-items: center; gap: 10px; padding: 14px 10px 12px; min-width: 76px;
+  background: var(--soft); border: 3px solid var(--line); border-radius: 18px; cursor: pointer; color: var(--tone);
+  font: 700 64px/1 var(--font-letter); transition: border-color .2s, background .2s, border-radius .45s;
+}
+.ltr .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--line); transition: background .2s; }
+.ltr.lit { border-color: var(--tone); }
+.ltr.lit .dot { background: var(--tone); }
+.blend.merged .ltr { border-radius: 0; border-left-width: 0; border-right-width: 0; }
+.blend.merged .ltr:first-child { border-radius: 18px 0 0 18px; border-left-width: 3px; }
+.blend.merged .ltr:last-child { border-radius: 0 18px 18px 0; border-right-width: 3px; }
+.blend.merged .dot { visibility: hidden; }
+.reveal { min-height: 120px; display: grid; justify-items: center; gap: 6px; }
+.reveal .q-emoji { font-size: 90px; }
+
+@media (prefers-reduced-motion: reduce) { .inner, .bar i, .blend, .ltr { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <a class="home" href="index.html">← 返回首页</a>
+      <h1>Phonics<span>自然拼读</span></h1>
+      <p class="hint" id="hint">点字母看这个音；点图片听单词。红色是元音，蓝色是辅音。</p>
+    </div>
+    <div class="tabs modes" role="group" aria-label="模式">
+      <button id="m-learn" type="button" aria-pressed="true">学习</button>
+      <button id="m-listen" type="button" aria-pressed="false">听音游戏</button>
+      <button id="m-blend" type="button" aria-pressed="false">拼读</button>
+      <button id="m-test" type="button" aria-pressed="false">测试</button>
+    </div>
+  </header>
+
+  <div class="switches" id="filters">
+    <div class="tabs" role="group" aria-label="学习顺序">
+      <button id="o-vowels" type="button" aria-pressed="true">先学元音</button>
+      <button id="o-mixed" type="button" aria-pressed="false">混着学 s a t i p n</button>
+    </div>
+    <div class="tabs" role="group" aria-label="范围">
+      <button id="r-v" type="button" aria-pressed="false">元音</button>
+      <button id="r-c" type="button" aria-pressed="false">辅音</button>
+      <button id="r-all" type="button" aria-pressed="true">全部</button>
+    </div>
+    <button class="pill" id="hide" type="button" aria-pressed="false">🙈 图片先藏起来：关</button>
+  </div>
+
+  <section id="learn">
+    <div class="strip" id="strip"></div>
+  </section>
+  <section class="sound" id="sound" aria-live="polite"></section>
+
+  <section class="test" id="listenbox" hidden aria-live="polite">
+    <div class="progress-row" style="width:min(380px,100%)"><span>只用耳朵听，不看字母</span><span id="l-score">答对 0</span></div>
+    <div id="lslot"></div>
+  </section>
+
+  <section id="blendbox" hidden>
+    <div class="learned">
+      <div class="group-label">孩子已经学会的字母（点一下选上或取消）</div>
+      <div class="tiles" id="learned"></div>
+      <div class="learned-row">
+        <button class="pill" id="l-satpin" type="button">只选 s a t i p n</button>
+        <button class="pill" id="l-all" type="button">全选</button>
+        <span id="l-count" class="group-label"></span>
+      </div>
+    </div>
+    <div class="test" id="bslot" style="margin-top:18px" aria-live="polite"></div>
+  </section>
+
+  <section id="testbox" hidden>
+    <div class="switches" style="justify-content:center">
+      <div class="tabs" role="group" aria-label="测试题型">
+        <button id="t-pic" type="button" aria-pressed="true">看图选字母</button>
+        <button id="t-ear" type="button" aria-pressed="false">听词选图</button>
+        <button id="t-flip" type="button" aria-pressed="false">看字母说发音</button>
+      </div>
+    </div>
+    <div class="test" id="test" style="margin-top:18px">
+      <div class="progress">
+        <div class="progress-row"><span id="count"></span><span id="right"></span></div>
+        <div class="bar"><i id="bar"></i></div>
+      </div>
+      <div id="qslot"></div>
+    </div>
+    <section class="result" id="result" hidden aria-live="polite"></section>
+  </section>
+</div>
+
+<script>
+// Words use [brackets] around the letters that make the target sound
+const GROUPS = [
+  { id: "v",  name: "短元音",       kind: "v" },
+  { id: "c1", name: "辅音 · 第一组", kind: "c" },
+  { id: "c2", name: "辅音 · 第二组", kind: "c" },
+  { id: "c3", name: "辅音 · 第三组", kind: "c" },
+  { id: "sp", name: "特别的音",      kind: "c" }
+];
+const SOUNDS = [
+  { k: "a", g: "v", ipa: "/æ/", tip: "嘴巴张大，嘴角往两边拉，像“哎”但嘴张得更开，短短的。", words: [["[a]pple","🍎"],["[a]nt","🐜"],["[a]lligator","🐊"]] },
+  { k: "e", g: "v", ipa: "/ɛ/", tip: "嘴巴半张，像“诶”，短促，不要拖长。", words: [["[e]gg","🥚"],["[e]lephant","🐘"],["[e]lf","🧝"]] },
+  { k: "i", g: "v", ipa: "/ɪ/", tip: "嘴巴微微张开，放松，像很短很松的“一”。", words: [["[i]nsect","🐛"],["[i]guana","🦎"],["[i]ll","🤒"]] },
+  { k: "o", g: "v", ipa: "/ɒ/", tip: "嘴巴张圆张大，像短促的“啊”（美式）或“奥”（英式）。", words: [["[o]ctopus","🐙"],["[o]tter","🦦"],["[o]x","🐂"]] },
+  { k: "u", g: "v", ipa: "/ʌ/", tip: "嘴巴放松，微微张开，像短促的“阿”，从喉咙轻轻发出。", words: [["[u]mbrella","☂️"],["[u]p","⬆️"],["[u]pside down","🙃"]] },
+
+  { k: "m", g: "c1", ipa: "/m/", tip: "闭上嘴，用鼻子哼“mmm”，像吃到好吃的。", words: [["[m]onkey","🐒"],["[m]oon","🌙"],["[m]ilk","🥛"]] },
+  { k: "s", g: "c1", ipa: "/s/", tip: "牙齿轻轻合上，像小蛇“sss”，只有气，不要读成“思”。", words: [["[s]un","☀️"],["[s]nake","🐍"],["[s]ock","🧦"]] },
+  { k: "t", g: "c1", ipa: "/t/", tip: "舌尖顶住上牙后面，轻轻弹开送一口气，不要带“特”的“e”。", words: [["[t]iger","🐯"],["[t]urtle","🐢"],["[t]omato","🍅"]] },
+  { k: "p", g: "c1", ipa: "/p/", tip: "双唇闭紧，突然张开送气。手放嘴前能感觉到一股气。", words: [["[p]ig","🐷"],["[p]izza","🍕"],["[p]enguin","🐧"]] },
+  { k: "n", g: "c1", ipa: "/n/", tip: "舌尖顶住上牙床，嘴巴微张，用鼻子出声“nnn”。", words: [["[n]ose","👃"],["[n]ut","🥜"],["[n]et","🥅"]] },
+  { k: "b", g: "c1", ipa: "/b/", tip: "双唇闭紧再张开，和 p 一样，但喉咙要震动，气很少。", words: [["[b]all","⚽"],["[b]ee","🐝"],["[b]anana","🍌"]] },
+  { k: "d", g: "c1", ipa: "/d/", tip: "舌尖顶住上牙床再弹开，和 t 一样，但喉咙要震动。", words: [["[d]og","🐶"],["[d]uck","🦆"],["[d]oor","🚪"]] },
+  { k: "f", g: "c1", ipa: "/f/", tip: "上牙轻轻咬住下嘴唇，往外吹气“fff”。", words: [["[f]ish","🐟"],["[f]oot","🦶"],["[f]ire","🔥"]] },
+
+  { k: "c", g: "c2", ipa: "/k/", note: "c 和 k 在这里发同一个音。", tip: "舌头后面抬起顶住，突然放开送气，像“克”但不带“e”。", words: [["[c]at","🐱"],["[c]ar","🚗"],["[c]ake","🎂"]] },
+  { k: "k", g: "c2", ipa: "/k/", note: "k 和 c 在这里发同一个音。", tip: "舌头后面抬起顶住，突然放开送气，像“克”但不带“e”。", words: [["[k]ite","🪁"],["[k]ey","🔑"],["[k]angaroo","🦘"]] },
+  { k: "g", g: "c2", ipa: "/g/", tip: "和 k 的位置一样，但喉咙要震动，像“哥”去掉“e”。", words: [["[g]oat","🐐"],["[g]ift","🎁"],["[g]uitar","🎸"]] },
+  { k: "h", g: "c2", ipa: "/h/", tip: "嘴巴张开，轻轻哈一口气，像在镜子上哈气。", words: [["[h]at","🎩"],["[h]orse","🐴"],["[h]ouse","🏠"]] },
+  { k: "l", g: "c2", ipa: "/l/", tip: "舌尖顶住上牙床，声音从舌头两边出来“lll”。", words: [["[l]ion","🦁"],["[l]eaf","🍃"],["[l]emon","🍋"]] },
+  { k: "r", g: "c2", ipa: "/r/", tip: "嘴唇微微撅圆，舌尖往后卷，但不要碰到上面。", words: [["[r]abbit","🐰"],["[r]ainbow","🌈"],["[r]obot","🤖"]] },
+  { k: "w", g: "c2", ipa: "/w/", tip: "嘴唇撅圆像要吹蜡烛，然后很快张开。", words: [["[w]atermelon","🍉"],["[w]olf","🐺"],["[w]atch","⌚"]] },
+
+  { k: "j", g: "c3", ipa: "/dʒ/", tip: "嘴唇往前凸，像“居”的开头，喉咙震动。", words: [["[j]uice","🧃"],["[j]eans","👖"],["[j]acket","🧥"]] },
+  { k: "v", g: "c3", ipa: "/v/", tip: "上牙轻咬下嘴唇，和 f 一样，但喉咙要震动（摸摸脖子）。", words: [["[v]iolin","🎻"],["[v]olcano","🌋"],["[v]an","🚐"]] },
+  { k: "y", g: "c3", ipa: "/j/", tip: "像“耶”的开头，舌头中间抬高，很快滑开。", words: [["[y]o-yo","🪀"],["[y]arn","🧶"],["[y]ellow","💛"]] },
+  { k: "z", g: "c3", ipa: "/z/", tip: "和 s 一样，但喉咙要震动，像蜜蜂“zzz”。", words: [["[z]ebra","🦓"],["[z]ero","0️⃣"],["[z]ipper","🤐"]] },
+
+  { k: "qu", g: "sp", ipa: "/kw/", note: "q 几乎总是和 u 一起出现。", tip: "先发 k，马上接 w，连起来“kw”。", words: [["[qu]een","👸"],["[qu]estion","❓"],["[qu]iet","🤫"]] },
+  { k: "x", g: "sp", ipa: "/ks/", note: "x 常常在单词最后。", end: true, tip: "先发 k 再发 s，连起来“ks”，像 box 的结尾。", words: [["bo[x]","📦"],["fo[x]","🦊"],["si[x]","6️⃣"]] }
+];
+// Mixed order follows the Jolly Phonics sequence (s a t i p n first), keeping only the single-letter sounds and qu
+const MIXED = [
+  { name: "第一组", keys: ["s", "a", "t", "i", "p", "n"] },
+  { name: "第二组", keys: ["c", "k", "e", "h", "r", "m", "d"] },
+  { name: "第三组", keys: ["g", "o", "u", "l", "f", "b"] },
+  { name: "第四组", keys: ["j", "z", "w", "v", "y", "x", "qu"] }
+];
+const kindOf = s => s.g === "v" ? "v" : "c";
+let order = "vowels";
+function groups() {
+  if (order === "vowels") return GROUPS.map(g => ({ name: g.name, list: SOUNDS.filter(s => s.g === g.id) }));
+  return MIXED.map(g => ({ name: g.name, list: g.keys.map(k => SOUNDS.find(s => s.k === k)) }));
+}
+
+const $ = id => document.getElementById(id);
+let range = "all";
+let mode = "learn";
+let testType = "pic";
+let current = 0;
+
+const plain = w => w.replace(/[\[\]]/g, "");
+const marked = w => w.replace(/\[(.+?)\]/g, "<mark>$1</mark>");
+const inRange = s => range === "all" || (range === "v" ? s.g === "v" : s.g !== "v");
+const sounds = () => groups().flatMap(g => g.list).filter(inRange);
+
+function speak(text) {
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US"; u.rate = 0.75;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+function shuffled(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+function btn(label, cls, fn) {
+  const b = el("button", cls);
+  b.type = "button"; b.textContent = label;
+  b.addEventListener("click", fn);
+  return b;
+}
+const bigLetter = s => s.k === "qu" ? "Qu qu" : s.k.toUpperCase() + s.k;
+
+/* ---------- Learn ---------- */
+function renderStrip() {
+  const strip = $("strip");
+  strip.innerHTML = "";
+  groups().forEach(g => {
+    const list = g.list.filter(inRange);
+    if (!list.length) return;
+    const box = el("div", "group");
+    box.appendChild(el("div", "group-label", g.name));
+    const tiles = el("div", "tiles");
+    list.forEach(s => {
+      const t = btn(s.k, "tile " + kindOf(s), () => { current = SOUNDS.indexOf(s); renderLearn(); });
+      t.setAttribute("aria-pressed", SOUNDS.indexOf(s) === current);
+      t.setAttribute("aria-label", "字母 " + s.k);
+      tiles.appendChild(t);
+    });
+    box.appendChild(tiles);
+    strip.appendChild(box);
+  });
+}
+
+function renderLearn() {
+  if (!inRange(SOUNDS[current])) current = SOUNDS.indexOf(sounds()[0]);
+  renderStrip();
+  const s = SOUNDS[current], kind = kindOf(s);
+  const box = $("sound");
+  box.className = "sound " + kind;
+  box.innerHTML = "";
+
+  const left = el("div", "letter-side");
+  left.appendChild(el("div", "kind", kind === "v" ? "元音 VOWEL" : "辅音 CONSONANT"));
+  left.appendChild(el("div", "letter", bigLetter(s)));
+  left.appendChild(el("div", "ipa", s.ipa));
+  left.appendChild(el("div", "tip", "<b>家长怎么教</b>" + s.tip + (s.note ? "<br>" + s.note : "")));
+  box.appendChild(left);
+
+  const words = el("div", "words");
+  s.words.forEach(([w, e]) => {
+    // With pictures hidden, the child reads the word first; the picture is the check
+    const b = el("button", "word",
+      '<span class="emoji' + (hidePics ? ' veil' : '') + '" aria-hidden="true">' + e + '</span>' +
+      '<span class="wtext">' + marked(w) + '</span>' +
+      (hidePics ? '<span class="say veil-say">先读一读，再点开</span>' : '<span class="say">🔊 点一下听</span>'));
+    b.type = "button";
+    b.setAttribute("aria-label", "听单词 " + plain(w));
+    b.addEventListener("click", () => {
+      const pic = b.querySelector(".emoji"), say = b.querySelector(".say");
+      pic.classList.remove("veil");
+      say.className = "say"; say.textContent = "🔊 点一下听";
+      speak(plain(w));
+    });
+    words.appendChild(b);
+  });
+  box.appendChild(words);
+
+  const list = sounds(), i = list.indexOf(s);
+  const nav = el("div", "nav");
+  const prev = btn("← 上一个", "pill", () => { current = SOUNDS.indexOf(list[i - 1]); renderLearn(); });
+  const next = btn("下一个 →", "pill", () => { current = SOUNDS.indexOf(list[i + 1]); renderLearn(); });
+  prev.disabled = i === 0; prev.style.visibility = i === 0 ? "hidden" : "";
+  next.disabled = i === list.length - 1; next.style.visibility = i === list.length - 1 ? "hidden" : "";
+  nav.append(prev, next);
+  box.appendChild(nav);
+}
+
+/* ---------- Test ---------- */
+const T = { qs: [], i: 0, right: 0, missed: [] };
+
+function wordPool() {
+  const pool = [];
+  sounds().forEach(s => s.words.forEach(([w, e]) => pool.push({ w, e, s })));
+  return pool;
+}
+
+function startTest(qs) {
+  T.qs = qs; T.i = 0; T.right = 0; T.missed = [];
+  $("result").hidden = true;
+  $("test").hidden = false;
+  showQuestion();
+}
+function newRound() {
+  if (testType === "flip") startTest(shuffled(sounds()));
+  else startTest(shuffled(wordPool()).slice(0, 10));
+}
+
+function setProgress() {
+  const n = T.qs.length;
+  $("count").textContent = "第 " + (T.i + 1) + " 题，共 " + n + " 题";
+  $("right").textContent = "答对 " + T.right;
+  $("bar").style.width = (T.i / n * 100) + "%";
+}
+
+function showQuestion() {
+  setProgress();
+  const slot = $("qslot");
+  slot.innerHTML = "";
+  if (testType === "pic") slot.appendChild(picQuestion(T.qs[T.i]));
+  else if (testType === "ear") slot.appendChild(earQuestion(T.qs[T.i]));
+  else slot.appendChild(flipQuestion(T.qs[T.i]));
+}
+
+function finish(ok) {
+  if (ok) T.right++; else T.missed.push(T.qs[T.i]);
+  $("right").textContent = "答对 " + T.right;
+}
+function nextButton() {
+  return btn(T.i + 1 < T.qs.length ? "下一题 →" : "看成绩", "big", () => {
+    T.i++;
+    if (T.i < T.qs.length) showQuestion(); else showResult();
+  });
+}
+
+// Letters that would also be correct for this sound (c and k share /k/)
+function sameSound(a, b) { return a.k === b.k || (a.ipa === b.ipa); }
+
+function picQuestion(q) {
+  const kind = kindOf(q.s);
+  const stage = el("div", "stage " + kind);
+  stage.appendChild(el("div", "prompt", q.s.end ? "这个单词<b>最后</b>是哪个字母？" : "这个单词<b>开头</b>是哪个字母？"));
+  stage.appendChild(el("div", "q-emoji", q.e));
+  const answer = el("div", "answer");
+  const feedback = el("div", "feedback");
+  const others = shuffled(sounds().filter(s => !sameSound(s, q.s))).slice(0, 2);
+  const opts = shuffled([q.s, ...others]);
+  const choices = el("div", "choices");
+  opts.forEach(s => {
+    const b = btn(s.k, "choice " + kindOf(s), () => {
+      const ok = s === q.s;
+      choices.querySelectorAll("button").forEach(x => {
+        x.disabled = true;
+        if (x.dataset.k === q.s.k) x.classList.add("right");
+      });
+      if (!ok) b.classList.add("wrong");
+      answer.innerHTML = marked(q.w);
+      feedback.className = "feedback " + (ok ? "ok" : "no");
+      feedback.textContent = ok ? "答对了！" : "是 " + q.s.k + "，再记一记";
+      speak(plain(q.w));
+      finish(ok);
+      stage.appendChild(nextButton());
+    });
+    b.dataset.k = s.k;
+    choices.appendChild(b);
+  });
+  stage.appendChild(choices);
+  stage.appendChild(answer);
+  stage.appendChild(feedback);
+  stage.appendChild(btn("🔊 听单词", "pill", () => speak(plain(q.w))));
+  return stage;
+}
+
+function earQuestion(q) {
+  const stage = el("div", "stage " + kindOf(q.s));
+  stage.appendChild(el("div", "prompt", "听一听，点出对的图片"));
+  const listen = btn("🔊", "listen", () => speak(plain(q.w)));
+  listen.setAttribute("aria-label", "再听一遍");
+  stage.appendChild(listen);
+  const pool = wordPool().filter(x => x.s !== q.s && x.e !== q.e);
+  const others = [];
+  shuffled(pool).forEach(x => { if (others.length < 2 && !others.some(o => o.s === x.s)) others.push(x); });
+  const opts = shuffled([q, ...others]);
+  const answer = el("div", "answer");
+  const feedback = el("div", "feedback");
+  const choices = el("div", "choices");
+  opts.forEach(o => {
+    const b = btn(o.e, "choice pic", () => {
+      const ok = o === q;
+      choices.querySelectorAll("button").forEach(x => {
+        x.disabled = true;
+        if (x.dataset.w === q.w) x.classList.add("right");
+      });
+      if (!ok) b.classList.add("wrong");
+      answer.innerHTML = marked(q.w);
+      feedback.className = "feedback " + (ok ? "ok" : "no");
+      feedback.textContent = ok ? "答对了！" : "是 " + q.e + " " + plain(q.w);
+      speak(plain(q.w));
+      finish(ok);
+      stage.appendChild(nextButton());
+    });
+    b.dataset.w = o.w;
+    b.setAttribute("aria-label", plain(o.w));
+    choices.appendChild(b);
+  });
+  stage.appendChild(choices);
+  stage.appendChild(answer);
+  stage.appendChild(feedback);
+  setTimeout(() => speak(plain(q.w)), 250);
+  return stage;
+}
+
+function flipQuestion(s) {
+  const kind = kindOf(s);
+  const box = el("div", "test " + kind);
+  box.appendChild(el("div", "prompt", "先说出这个字母的音和一个单词，再翻开看"));
+  const card = el("button", "card");
+  card.type = "button";
+  card.setAttribute("aria-label", "字母 " + s.k + "，点一下翻面");
+  card.innerHTML =
+    '<div class="inner">' +
+      '<div class="face"><div class="letter">' + bigLetter(s) + '</div></div>' +
+      '<div class="face back"><div class="ipa">' + s.ipa + '</div><div class="mini">' +
+        s.words.map(([w, e]) => '<span><i aria-hidden="true">' + e + '</i>' + plain(w) + '</span>').join("") +
+      '</div></div>' +
+    '</div>';
+  const actions = el("div", "actions");
+  const flip = () => {
+    if (card.classList.contains("flipped")) return;
+    card.classList.add("flipped");
+    speak(s.words.map(([w]) => plain(w)).join(", "));
+    actions.innerHTML = "";
+    actions.append(
+      btn("✓ 说对了", "big good", () => { finish(true); advance(); }),
+      btn("✗ 没说出", "big miss", () => { finish(false); advance(); })
+    );
+  };
+  card.addEventListener("click", flip);
+  actions.appendChild(btn("翻开看答案", "big", flip));
+  box.append(card, actions);
+  setTimeout(() => card.focus({ preventScroll: true }), 0);
+  return box;
+  function advance() { T.i++; if (T.i < T.qs.length) showQuestion(); else showResult(); }
+}
+
+function showResult() {
+  $("bar").style.width = "100%";
+  $("test").hidden = true;
+  const n = T.qs.length, r = T.right;
+  const box = $("result");
+  box.hidden = false;
+  box.innerHTML =
+    '<div class="score">' + r + '<small> / ' + n + '</small></div>' +
+    '<p>' + (r === n ? "全部答对了，真棒！" : "答对了 " + r + " 题。下面这些再练练：") + '</p>';
+  if (T.missed.length) {
+    const wrap = el("div", "missed");
+    T.missed.forEach(m => {
+      const s = m.s || m, kind = kindOf(s);
+      const html = m.s ? '<i aria-hidden="true">' + m.e + '</i>' + marked(m.w) : '<i>' + s.k + '</i>' + s.ipa;
+      wrap.appendChild(el("div", "chip " + kind, html));
+    });
+    box.appendChild(wrap);
+  }
+  const acts = el("div", "actions");
+  if (T.missed.length) {
+    const missed = T.missed.slice();
+    acts.appendChild(btn("只练错的", "big miss", () => startTest(shuffled(missed))));
+  }
+  acts.appendChild(btn("再来一轮", "big", newRound));
+  acts.appendChild(btn("回去学习", "big", () => { mode = "learn"; refresh(); }));
+  box.appendChild(acts);
+}
+
+/* ---------- Listening game: same first sound, no letters shown ---------- */
+const L = { right: 0 };
+function beginWords() {
+  // Beginning-sound words only: x words end in the sound, and qu starts with the same /k/ as c and k
+  const pool = [];
+  SOUNDS.forEach(s => { if (!s.end && s.k !== "qu") s.words.forEach(([w, e]) => pool.push({ w, e, s })); });
+  return pool;
+}
+function listenQuestion() {
+  const pool = beginWords();
+  const s = shuffled(SOUNDS.filter(x => !x.end && x.k !== "qu"))[0];
+  const [refW, ansW] = shuffled(s.words);
+  const ref = { w: refW[0], e: refW[1], s }, ans = { w: ansW[0], e: ansW[1], s };
+  const others = [];
+  shuffled(pool).forEach(x => {
+    if (others.length < 2 && x.s.ipa !== s.ipa && !others.some(o => o.s.ipa === x.s.ipa)) others.push(x);
+  });
+  const slot = $("lslot");
+  slot.innerHTML = "";
+  const stage = el("div", "stage c");
+  stage.appendChild(el("div", "prompt", "哪个和它<b>开头的音</b>一样？"));
+  const refBox = el("div", "ref");
+  const refBtn = btn(ref.e, "choice pic", () => speak(plain(ref.w)));
+  refBtn.setAttribute("aria-label", "听 " + plain(ref.w));
+  refBox.append(refBtn, el("div", "say", "🔊 点它听一听"));
+  stage.appendChild(refBox);
+
+  const choices = el("div", "choices");
+  const feedback = el("div", "feedback");
+  shuffled([ans, ...others]).forEach(o => {
+    const box = el("div", "pick");
+    const pic = btn(o.e, "choice pic", () => {
+      const ok = o === ans;
+      choices.querySelectorAll(".choice").forEach(x => {
+        x.disabled = true;
+        if (x.dataset.w === ans.w) x.classList.add("right");
+      });
+      if (!ok) pic.classList.add("wrong");
+      if (ok) L.right++;
+      $("l-score").textContent = "答对 " + L.right;
+      feedback.className = "feedback " + (ok ? "ok" : "no");
+      feedback.innerHTML = (ok ? "答对了！" : "是这个：") + " " + plain(ref.w) + " 和 " + plain(ans.w) + " 都是同一个音开头";
+      speak(plain(ref.w) + ", " + plain(ans.w));
+      stage.appendChild(btn("下一题 →", "big", listenQuestion));
+    });
+    pic.dataset.w = o.w;
+    pic.setAttribute("aria-label", "选 " + plain(o.w));
+    const ear = btn("🔊 听", "pill ear", () => speak(plain(o.w)));
+    box.append(pic, ear);
+    choices.appendChild(box);
+  });
+  stage.append(choices, feedback);
+  slot.appendChild(stage);
+  setTimeout(() => speak(plain(ref.w)), 250);
+}
+
+/* ---------- Blending: decodable words from letters the child knows ---------- */
+const CVC = [
+  ["ant","🐜"],["pin","📌"],["pan","🍳"],["nap","😴"],["sit","🪑"],["tap","🚰"],["sip","🥤"],["tin","🥫"],
+  ["cat","🐱"],["hat","🎩"],["bat","🦇"],["rat","🐀"],["map","🗺️"],["cap","🧢"],["van","🚐"],["bag","👜"],["dad","👨"],["sad","😢"],
+  ["bed","🛏️"],["red","🔴"],["hen","🐔"],["pen","🖊️"],["ten","🔟"],["net","🥅"],["jet","✈️"],["web","🕸️"],["leg","🦵"],["wet","💦"],
+  ["pig","🐷"],["lip","👄"],["zip","🤐"],["kid","🧒"],["dig","⛏️"],["six","6️⃣"],
+  ["dog","🐶"],["log","🪵"],["hot","🥵"],["pot","🍲"],["box","📦"],["fox","🦊"],["mop","🧹"],
+  ["sun","☀️"],["bus","🚌"],["cup","☕"],["bug","🐛"],["hug","🤗"],["nut","🥜"],["run","🏃"],["tub","🛁"],["cut","✂️"]
+];
+const LETTERS = SOUNDS.filter(s => s.k.length === 1).map(s => s.k);
+const SATPIN = ["s", "a", "t", "i", "p", "n"];
+let learned = SATPIN.slice();
+try { const saved = JSON.parse(localStorage.getItem("phonics-learned")); if (Array.isArray(saved)) learned = saved; } catch (e) {}
+const saveLearned = () => { try { localStorage.setItem("phonics-learned", JSON.stringify(learned)); } catch (e) {} };
+const canRead = ([w]) => [...w].every(ch => learned.includes(ch));
+const B = { deck: [], i: 0 };
+
+function renderLearned() {
+  const box = $("learned");
+  box.innerHTML = "";
+  LETTERS.forEach(k => {
+    const s = SOUNDS.find(x => x.k === k);
+    const t = btn(k, "tile " + kindOf(s), () => {
+      learned = learned.includes(k) ? learned.filter(x => x !== k) : [...learned, k];
+      saveLearned(); renderBlend();
+    });
+    t.setAttribute("aria-pressed", learned.includes(k));
+    box.appendChild(t);
+  });
+}
+function renderBlend() {
+  renderLearned();
+  const list = CVC.filter(canRead);
+  $("l-count").textContent = "能拼出 " + list.length + " 个词";
+  B.deck = shuffled(list); B.i = 0;
+  blendWord();
+}
+function blendWord() {
+  const slot = $("bslot");
+  slot.innerHTML = "";
+  if (!B.deck.length) {
+    slot.appendChild(el("p", "prompt", "这些字母还拼不出词。至少选上一个元音（红色）和两个辅音试试。"));
+    return;
+  }
+  const [w, e] = B.deck[B.i % B.deck.length];
+  const stage = el("div", "stage");
+  const prompt = el("div", "prompt", "点每个字母，说出它的音");
+  const row = el("div", "blend");
+  const reveal = el("div", "reveal");
+  const actions = el("div", "actions");
+  let lit = 0;
+  [...w].forEach((ch, i) => {
+    const s = SOUNDS.find(x => x.k === ch);
+    const t = el("button", "ltr " + kindOf(s), ch + '<span class="dot" aria-hidden="true"></span>');
+    t.type = "button";
+    t.setAttribute("aria-label", "字母 " + ch + "，" + s.ipa);
+    t.addEventListener("click", () => {
+      if (t.classList.contains("lit") || i !== lit) return;
+      t.classList.add("lit"); lit++;
+      const nextT = row.children[lit];
+      if (nextT) nextT.focus({ preventScroll: true });
+      if (lit === w.length) ready();
+    });
+    row.appendChild(t);
+  });
+  function ready() {
+    prompt.innerHTML = "把音连起来，快一点说：<b>" + [...w].join(" – ") + "</b>";
+    actions.innerHTML = "";
+    actions.appendChild(btn("合起来！", "big good", () => {
+      row.classList.add("merged");
+      prompt.textContent = "读出来了吗？点一下看看对不对";
+      actions.innerHTML = "";
+      actions.appendChild(btn("看图片 👀", "big", () => {
+        reveal.innerHTML = '<div class="q-emoji">' + e + '</div><div class="answer">' + w + '</div>';
+        speak(w);
+        actions.innerHTML = "";
+        actions.append(
+          btn("🔊 再听一遍", "pill", () => speak(w)),
+          btn("下一个词 →", "big", () => { B.i++; blendWord(); })
+        );
+      }));
+    }));
+  }
+  actions.appendChild(btn("重新开始这个词", "pill", blendWord));
+  stage.append(prompt, row, reveal, actions);
+  slot.appendChild(stage);
+}
+$("l-satpin").addEventListener("click", () => { learned = SATPIN.slice(); saveLearned(); renderBlend(); });
+$("l-all").addEventListener("click", () => { learned = LETTERS.slice(); saveLearned(); renderBlend(); });
+
+/* ---------- Switches ---------- */
+const HINTS = {
+  learn: "点字母看这个音；点图片听单词。红色是元音，蓝色是辅音。",
+  listen: "不看字母，只用耳朵：听一个词，找出开头音一样的图片。",
+  blend: "先选好孩子学会的字母。点着字母一个一个说音，再合起来读成一个词，最后看图片对答案。",
+  test: "每轮 10 题（看字母说发音按字母个数）。答完显示成绩，错的可以再练。"
+};
+let hidePics = false;
+function refresh() {
+  $("o-vowels").setAttribute("aria-pressed", order === "vowels");
+  $("o-mixed").setAttribute("aria-pressed", order === "mixed");
+  ["v", "c", "all"].forEach(r => $("r-" + r).setAttribute("aria-pressed", range === r));
+  ["learn", "listen", "blend", "test"].forEach(m => $("m-" + m).setAttribute("aria-pressed", mode === m));
+  ["pic", "ear", "flip"].forEach(t => $("t-" + t).setAttribute("aria-pressed", testType === t));
+  $("hide").setAttribute("aria-pressed", hidePics);
+  $("hide").textContent = hidePics ? "🙈 图片先藏起来：开" : "🙈 图片先藏起来：关";
+  $("hide").hidden = mode !== "learn";
+  $("filters").hidden = mode === "listen" || mode === "blend";
+  $("learn").hidden = $("sound").hidden = mode !== "learn";
+  $("listenbox").hidden = mode !== "listen";
+  $("blendbox").hidden = mode !== "blend";
+  $("testbox").hidden = mode !== "test";
+  $("hint").textContent = HINTS[mode];
+  if (mode === "learn") renderLearn();
+  else if (mode === "listen") { L.right = 0; $("l-score").textContent = "答对 0"; listenQuestion(); }
+  else if (mode === "blend") renderBlend();
+  else newRound();
+}
+$("m-listen").addEventListener("click", () => { mode = "listen"; refresh(); });
+$("m-blend").addEventListener("click", () => { mode = "blend"; refresh(); });
+$("hide").addEventListener("click", () => { hidePics = !hidePics; refresh(); });
+$("o-vowels").addEventListener("click", () => { order = "vowels"; current = SOUNDS.indexOf(sounds()[0]); refresh(); });
+$("o-mixed").addEventListener("click", () => { order = "mixed"; current = SOUNDS.indexOf(groups()[0].list.filter(inRange)[0]); refresh(); });
+$("r-v").addEventListener("click", () => { range = "v"; refresh(); });
+$("r-c").addEventListener("click", () => { range = "c"; refresh(); });
+$("r-all").addEventListener("click", () => { range = "all"; refresh(); });
+$("m-learn").addEventListener("click", () => { mode = "learn"; refresh(); });
+$("m-test").addEventListener("click", () => { mode = "test"; refresh(); });
+$("t-pic").addEventListener("click", () => { testType = "pic"; refresh(); });
+$("t-ear").addEventListener("click", () => { testType = "ear"; refresh(); });
+$("t-flip").addEventListener("click", () => { testType = "flip"; refresh(); });
+
+refresh();
+</script>
+</body>
+</html>

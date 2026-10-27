@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shapes & Phonics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@700&family=Baloo+2:wght@600;800&family=ZCOOL+KuaiLe&display=swap">
+<style>
+/* Layout: a short heading over two large game cards side by side, stacking on phones */
+:root {
+  --bg: #eef3f6;
+  --fg: #1d2a33;
+  --muted: #5b6b76;
+  --card: #ffffff;
+  --line: #d5dfe6;
+  --focus: #2b6cb0;
+  --vowel: #d6402b;
+  --cons: #2468c9;
+  --c1: #e4572e; --c2: #f3a712; --c3: #29a36a; --c4: #2e86de; --c5: #8e5bd8;
+  --font-letter: "Andika", "Comic Sans MS", system-ui, sans-serif;
+  --font-en: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --font-zh: "ZCOOL KuaiLe", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-ui: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141c22; --fg: #eef3f6; --muted: #9aabb6; --card: #1f2a32; --line: #33424d; --focus: #7fb3ee;
+    --vowel: #ff7a62; --cons: #6aa8f5;
+    --c1: #ff7a52; --c2: #ffc23d; --c3: #4cc98b; --c4: #5ba7f0; --c5: #ab83ec;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141c22; --fg: #eef3f6; --muted: #9aabb6; --card: #1f2a32; --line: #33424d; --focus: #7fb3ee;
+  --vowel: #ff7a62; --cons: #6aa8f5;
+  --c1: #ff7a52; --c2: #ffc23d; --c3: #4cc98b; --c4: #5ba7f0; --c5: #ab83ec;
+  color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--font-ui); }
+.wrap {
+  max-width: 900px; margin: 0 auto;
+  padding-block: 32px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 24px;
+}
+h1 { margin: 0; font-family: var(--font-zh); font-weight: 400; font-size: clamp(30px, 6vw, 44px); line-height: 1.15; text-wrap: balance; }
+.lead { margin: 6px 0 0; color: var(--muted); font-size: 16px; }
+.games { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 620px) { .games { grid-template-columns: minmax(0, 1fr); } }
+.game {
+  display: grid; gap: 14px; padding: 22px; color: var(--fg); text-decoration: none;
+  background: var(--card); border: 2px solid var(--line); border-radius: 24px; box-shadow: 0 4px 0 var(--line);
+  transition: transform .15s, border-color .15s;
+}
+.game:hover { transform: translateY(-2px); border-color: var(--muted); }
+.game:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+.preview { display: flex; align-items: center; gap: 12px; height: 72px; }
+.preview svg { height: 64px; width: auto; }
+.letters { font: 700 58px/1 var(--font-letter); display: flex; gap: 10px; }
+.letters .v { color: var(--vowel); }
+.letters .c { color: var(--cons); }
+.game h2 { margin: 0; font-family: var(--font-en); font-weight: 800; font-size: 30px; line-height: 1; }
+.game h2 span { font-family: var(--font-zh); font-weight: 400; font-size: .75em; color: var(--muted); margin-left: .35em; }
+.game ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 15px; line-height: 1.5; }
+.go { font-weight: 700; color: var(--focus); }
+@media (prefers-reduced-motion: reduce) { .game { transition: none; } }
+
+*, *::before, *::after { box-sizing: border-box; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; font-size: 14px; -webkit-text-size-adjust: 100%; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>宝宝学习角</h1>
+    <p class="lead">选一个游戏开始。每个游戏都有“学习”和“测试”两种玩法。</p>
+  </header>
+
+  <main class="games">
+    <a class="game" href="shapes.html">
+      <div class="preview" aria-hidden="true">
+        <svg viewBox="0 0 100 100"><polygon points="50,8 94,88 6,88" fill="var(--c3)"/></svg>
+        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="var(--c1)"/></svg>
+        <svg viewBox="0 0 100 100"><polygon points="14,40 64,40 64,90 14,90" fill="var(--c4)"/><polygon points="14,40 64,40 86,18 36,18" fill="var(--c4)"/><polygon points="14,40 64,40 86,18 36,18" fill="#fff" fill-opacity=".3"/><polygon points="64,40 86,18 86,68 64,90" fill="var(--c4)"/><polygon points="64,40 86,18 86,68 64,90" fill="#000" fill-opacity=".22"/></svg>
+      </div>
+      <h2>Shapes<span>认形状</span></h2>
+      <ul>
+        <li>2D 平面图形 16 个，包括五边形到十边形</li>
+        <li>3D 立体图形 9 个，包括四面体</li>
+        <li>翻卡片认中英文，测试一次一张</li>
+      </ul>
+      <span class="go">开始 →</span>
+    </a>
+
+    <a class="game" href="phonics.html">
+      <div class="preview letters" aria-hidden="true"><span class="v">a</span><span class="c">m</span><span class="c">s</span><span class="v">o</span></div>
+      <h2>Phonics<span>自然拼读</span></h2>
+      <ul>
+        <li>5 个短元音 + 21 个辅音，可以先学元音，也可以按 s a t i p n 混着学</li>
+        <li>每个音 3 个例词，配图片，点一下读单词</li>
+        <li>听音游戏、拼读 s‑a‑t → sat，还有三种测试</li>
+      </ul>
+      <span class="go">开始 →</span>
+    </a>
+  </main>
+</div>
+
+</body>
+</html>
