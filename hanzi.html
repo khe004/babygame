@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>认汉字</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=ZCOOL+KuaiLe&display=swap">
+<style>
+/* Layout: header with mode tabs and a "learned up to" pair filter; "learn" = pair strip + one character card
+   (田字格 with stroke animation and tracing on the left, picture, parent tip and three example words on the right);
+   "test" = one question at a time. Characters come in the pairs of the child's copybook, each pair has its own colour. */
+:root {
+  --bg: #eef3f6;
+  --fg: #1d2a33;
+  --muted: #5b6b76;
+  --card: #ffffff;
+  --soft: #f6f9fb;
+  --line: #d5dfe6;
+  --focus: #2b6cb0;
+  --good: #1f8a56;
+  --miss: #c2462a;
+  --tip: #fff6dc;
+  --grid: #e3a49a;
+  --c1: #e4572e; --c2: #2e86de; --c3: #29a36a; --c4: #d18a00; --c5: #8e5bd8;
+  --font-en: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --font-zh: "ZCOOL KuaiLe", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-kai: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "AR PL UKai CN", serif;
+  --font-ui: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141c22; --fg: #eef3f6; --muted: #9aabb6; --card: #1f2a32; --soft: #18222a; --line: #33424d;
+    --focus: #7fb3ee; --good: #4cc98b; --miss: #ff8a66; --tip: #2c2a1f; --grid: #7a4b44;
+    --c1: #ff7a52; --c2: #5ba7f0; --c3: #4cc98b; --c4: #ffc23d; --c5: #ab83ec;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141c22; --fg: #eef3f6; --muted: #9aabb6; --card: #1f2a32; --soft: #18222a; --line: #33424d;
+  --focus: #7fb3ee; --good: #4cc98b; --miss: #ff8a66; --tip: #2c2a1f; --grid: #7a4b44;
+  --c1: #ff7a52; --c2: #5ba7f0; --c3: #4cc98b; --c4: #ffc23d; --c5: #ab83ec;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html, body { background: var(--bg); color: var(--fg); }
+body { margin: 0; font: 14px var(--font-ui); -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+button { font-family: inherit; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+.wrap {
+  max-width: 1040px; margin: 0 auto;
+  padding-block: 24px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px;
+}
+.home { display: inline-block; margin-bottom: 8px; color: var(--muted); font-size: 15px; font-weight: 600; text-decoration: none; }
+.home:hover { color: var(--fg); }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+h1 { margin: 0; font-family: var(--font-zh); font-weight: 400; font-size: clamp(30px, 5.5vw, 44px); line-height: 1.05; }
+h1 span { font-size: .6em; color: var(--muted); margin-left: .4em; }
+.hint { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+
+.switches { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.tabs { display: inline-flex; flex-wrap: wrap; background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.tabs button { all: unset; cursor: pointer; font: 700 15px var(--font-ui); padding: 7px 16px; border-radius: 999px; color: var(--muted); }
+.tabs button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.tabs button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.label { font-size: 13px; color: var(--muted); }
+
+.p1 { --tone: var(--c1); } .p2 { --tone: var(--c2); } .p3 { --tone: var(--c3); } .p4 { --tone: var(--c4); } .p5 { --tone: var(--c5); }
+
+/* Learn: pair strip */
+.strip { display: flex; flex-wrap: wrap; gap: 14px 22px; }
+.group { display: grid; gap: 6px; }
+.group-label { font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+.tiles { display: flex; gap: 6px; }
+.tile {
+  font: 400 28px/1 var(--font-kai); color: var(--tone); background: var(--card);
+  border: 2px solid var(--line); border-radius: 12px; width: 52px; height: 52px; cursor: pointer;
+}
+.tile[aria-pressed="true"] { background: var(--tone); color: var(--card); border-color: var(--tone); }
+
+/* Learn: character card */
+.hanzi {
+  display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 24px;
+  background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 24px;
+}
+@media (max-width: 760px) { .hanzi { grid-template-columns: minmax(0, 1fr); padding: 18px; } }
+.char-side { display: grid; align-content: start; justify-items: center; gap: 10px; }
+.kind { justify-self: stretch; font-size: 13px; font-weight: 700; color: var(--tone); letter-spacing: .04em; }
+.pinyin { font: 700 30px/1 var(--font-en); color: var(--tone); min-height: 30px; letter-spacing: .03em; }
+.pinyin.off { visibility: hidden; }
+
+/* 田字格: square box, dashed centre lines and diagonals, like the copybook */
+.tzg {
+  position: relative; width: min(260px, 100%); aspect-ratio: 1; border: 2px solid var(--grid); background: var(--card);
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.tzg > svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.tzg .target { position: absolute; inset: 0; }
+.tzg .target svg { display: block; width: 100%; height: 100%; }
+.tzg .fallback { position: absolute; inset: 0; display: grid; place-items: center; font: 400 calc(min(260px, 70vw) * .78)/1 var(--font-kai); color: var(--fg); }
+.strokes { font-size: 14px; color: var(--muted); min-height: 20px; text-align: center; }
+.strokes.done { color: var(--good); font-weight: 700; }
+.write-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+.info { display: grid; align-content: start; gap: 14px; }
+.picture {
+  display: flex; align-items: center; gap: 16px; padding: 14px 18px; cursor: pointer; text-align: left; color: var(--fg);
+  background: var(--soft); border: 2px solid var(--line); border-radius: 18px;
+}
+.picture:hover { border-color: var(--tone); }
+.picture .emoji { font-size: clamp(54px, 9vw, 80px); }
+.picture .emoji.many { font-size: clamp(30px, 5vw, 42px); max-width: 4.4em; line-height: 1.15; }
+.cap { display: grid; gap: 4px; }
+.cap b { font: 400 clamp(26px, 4.4vw, 36px)/1.15 var(--font-kai); }
+.emoji { line-height: 1; font-family: var(--font-emoji); }
+mark { background: none; color: var(--tone); text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 5px; }
+.tip { background: var(--tip); border-radius: 14px; padding: 12px 14px; font-size: 15px; line-height: 1.6; }
+.tip b { display: block; font-size: 12px; color: var(--muted); letter-spacing: .06em; margin-bottom: 2px; }
+.words { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 460px) { .words { gap: 8px; } }
+.word {
+  display: grid; justify-items: center; align-content: start; gap: 8px; padding: 16px 6px 12px;
+  background: var(--soft); border: 2px solid var(--line); border-radius: 18px; cursor: pointer; color: var(--fg);
+}
+.word:hover { border-color: var(--tone); }
+.word .emoji { font-size: clamp(40px, 7vw, 60px); min-height: 1em; }
+.word .emoji.many { font-size: clamp(24px, 4vw, 34px); }
+.wtext { font: 400 clamp(22px, 3.6vw, 30px)/1.1 var(--font-kai); text-align: center; overflow-wrap: anywhere; }
+.wpy { font-size: 13px; color: var(--muted); }
+.say { font-size: 12px; color: var(--muted); }
+.nav { display: flex; justify-content: space-between; gap: 12px; grid-column: 1 / -1; }
+
+.pill, .big { color: var(--fg); background: var(--card); border: 2px solid var(--line); cursor: pointer; }
+.pill { font: 600 15px var(--font-ui); border-radius: 999px; padding: 8px 16px; }
+.pill.on { border-color: var(--tone, var(--focus)); color: var(--tone, var(--focus)); }
+.big { font: 700 18px var(--font-ui); border-radius: 16px; padding: 12px 24px; box-shadow: 0 3px 0 var(--line); }
+.big.good { border-color: var(--good); color: var(--good); }
+.big.miss { border-color: var(--miss); color: var(--miss); }
+
+/* Test */
+.test { display: grid; justify-items: center; gap: 18px; }
+.progress { width: min(380px, 100%); display: grid; gap: 6px; }
+.progress-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--good); border-radius: inherit; transition: width .3s; }
+.stage {
+  width: min(480px, 100%); background: var(--card); border: 2px solid var(--line); border-radius: 24px;
+  padding: 24px 18px; display: grid; justify-items: center; gap: 16px; text-align: center;
+}
+.prompt { font-size: 17px; font-weight: 600; }
+.q-char { font: 400 120px/1 var(--font-kai); color: var(--tone); }
+.choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.choice {
+  min-width: 96px; height: 96px; padding: 0 12px; border-radius: 20px; cursor: pointer;
+  background: var(--soft); border: 3px solid var(--line); color: var(--fg);
+  font: 400 60px/1 var(--font-kai);
+}
+.choice.pic { font: 54px/1 var(--font-emoji); }
+.choice.pic.many { font-size: 26px; max-width: 150px; line-height: 1.15; }
+.choice.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--soft)); }
+.choice.wrong { border-color: var(--miss); opacity: .55; }
+.choice:disabled { cursor: default; }
+.answer { min-height: 34px; font: 400 28px var(--font-kai); }
+.feedback { font-weight: 700; font-size: 16px; min-height: 22px; }
+.feedback.ok { color: var(--good); }
+.feedback.no { color: var(--miss); }
+.listen { font-size: 40px; width: 96px; height: 96px; border-radius: 50%; cursor: pointer; background: var(--soft); border: 3px solid var(--line); }
+
+/* Flip test card */
+.card { all: unset; cursor: pointer; display: block; width: min(300px, 78vw); aspect-ratio: 3 / 4; perspective: 900px; border-radius: 22px; }
+.card:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+.inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.3,1.4,.5,1); }
+.card.flipped .inner { transform: rotateY(180deg); }
+.face {
+  position: absolute; inset: 0; border-radius: 22px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border: 2px solid var(--line); background: var(--card); box-shadow: 0 4px 0 var(--line);
+  display: grid; place-items: center; align-content: center; gap: 10px; padding: 16px; text-align: center;
+}
+.face .q-char { font-size: 150px; }
+.back { transform: rotateY(180deg); background: var(--soft); }
+.back .pinyin { font-size: 34px; }
+.back .big-emoji { font: 64px/1 var(--font-emoji); }
+.back .big-emoji.many { font-size: 32px; line-height: 1.15; }
+.mini { display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: center; font: 400 20px var(--font-kai); }
+
+.result { display: grid; justify-items: center; gap: 14px; text-align: center; max-width: 600px; margin: 0 auto; }
+.score { font-family: var(--font-en); font-weight: 800; font-size: 64px; line-height: 1; font-variant-numeric: tabular-nums; }
+.score small { font-size: .45em; color: var(--muted); }
+.result p { margin: 0; font-size: 17px; }
+.missed { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.chip { display: grid; justify-items: center; gap: 2px; min-width: 76px; padding: 10px 8px; background: var(--card); border: 2px solid var(--line); border-radius: 14px; font-size: 14px; color: var(--muted); }
+.chip i { font: 400 40px/1.1 var(--font-kai); font-style: normal; color: var(--tone); }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+
+@media (prefers-reduced-motion: reduce) { .inner, .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <a class="home" href="index.html">← 返回首页</a>
+      <h1>认汉字<span>字帖里的字</span></h1>
+      <p class="hint" id="hint"></p>
+    </div>
+    <div class="tabs" role="group" aria-label="模式">
+      <button id="m-learn" type="button" aria-pressed="true">学习</button>
+      <button id="m-test" type="button" aria-pressed="false">测试</button>
+    </div>
+  </header>
+
+  <div class="switches">
+    <span class="label">学到哪一对了</span>
+    <div class="tabs" role="group" aria-label="学到哪一对" id="upto"></div>
+    <button class="pill" id="py" type="button" aria-pressed="true">拼音：显示</button>
+  </div>
+
+  <section id="learn">
+    <div class="strip" id="strip"></div>
+  </section>
+  <section class="hanzi" id="card" aria-live="polite"></section>
+
+  <section id="testbox" hidden>
+    <div class="switches" style="justify-content:center">
+      <div class="tabs" role="group" aria-label="测试题型">
+        <button id="t-pic" type="button" aria-pressed="true">看字选图</button>
+        <button id="t-ear" type="button" aria-pressed="false">听音找字</button>
+        <button id="t-flip" type="button" aria-pressed="false">认字卡</button>
+      </div>
+    </div>
+    <div class="test" id="test" style="margin-top:18px">
+      <div class="progress">
+        <div class="progress-row"><span id="count"></span><span id="right"></span></div>
+        <div class="bar"><i id="bar"></i></div>
+      </div>
+      <div id="qslot"></div>
+    </div>
+    <section class="result" id="result" hidden aria-live="polite"></section>
+  </section>
+</div>
+
+<script src="vendor/hanzi-writer/hanzi-writer.min.js"></script>
+<script src="vendor/hanzi-writer/strokes.js"></script>
+<script>
+// Pairs follow the order of the child's copybook. Words use [brackets] around the target character.
+// zu is the word used when reading the character aloud ("水，喝水的水"), which also gives 了 its "le" reading.
+// abstract: no picture of the thing itself, so it is left out of the picture test.
+const PAIRS = [
+  { name: "第一对", about: "一对反义词", keys: ["多", "少"] },
+  { name: "第二对", about: "一对反义词", keys: ["水", "火"] },
+  { name: "第三对", about: "山上有石头", keys: ["山", "石"] },
+  { name: "第四对", about: "白天和晚上", keys: ["日", "月"] },
+  { name: "第五对", about: "说话常用的字", keys: ["了", "个"] }
+];
+const CHARS = [
+  { c: "多", py: "duō", zu: "好多", pic: "🍬🍬🍬🍬🍬🍬", many: true, cap: "好[多]糖",
+    tip: "多和少是一对。拿一堆积木和一块积木摆在一起，问：哪边多？",
+    words: [["好[多]", "hǎo duō", "🎈🎈🎈🎈", true], ["[多]云", "duō yún", "⛅"], ["[多]少", "duō shǎo", "🤔"]] },
+  { c: "少", py: "shǎo", zu: "很少", pic: "🍬", cap: "只有一颗糖，好[少]",
+    tip: "少：小字下面加一撇，东西很少很小。和多放在一起对比着认。",
+    words: [["很[少]", "hěn shǎo", "🍪"], ["[少]一块", "shǎo yí kuài", "🧩"], ["多[少]", "duō shǎo", "🤔"]] },
+  { c: "水", py: "shuǐ", zu: "喝水", pic: "💧", cap: "[水]像小河在流",
+    tip: "象形字：中间一竖是水流，两边是溅起来的水花。可以先在纸上画一条小河，再写“水”。",
+    words: [["喝[水]", "hē shuǐ", "🚰"], ["[水]果", "shuǐ guǒ", "🍉"], ["[水]杯", "shuǐ bēi", "🥛"]] },
+  { c: "火", py: "huǒ", zu: "火车", pic: "🔥", cap: "[火]像一团火苗",
+    tip: "象形字：中间是火苗，两边的点是蹦出来的火星。水能灭火，水和火是一对。",
+    words: [["[火]车", "huǒ chē", "🚂"], ["[火]山", "huǒ shān", "🌋"], ["[火]锅", "huǒ guō", "🍲"]] },
+  { c: "山", py: "shān", zu: "爬山", pic: "⛰️", cap: "[山]有三个山尖",
+    tip: "象形字：三竖像三座山峰，中间最高。用手指比一比：中间高，两边低。",
+    words: [["爬[山]", "pá shān", "🧗"], ["[火][山]", "huǒ shān", "🌋"], ["雪[山]", "xuě shān", "🏔️"]] },
+  { c: "石", py: "shí", zu: "石头", pic: "🪨", cap: "山崖下面一块[石]头",
+    tip: "上面的一横一撇像山崖，下面的“口”像一块石头。山上有好多石头，所以山和石是一对。",
+    words: [["[石]头", "shí tou", "🪨"], ["宝[石]", "bǎo shí", "💎"], ["[石]桥", "shí qiáo", "🌉"]] },
+  { c: "日", py: "rì", zu: "日出", pic: "☀️", cap: "[日]就是太阳",
+    tip: "象形字：古时候画一个圆圈，中间一点，就是太阳。后来圆圈写成了方的。",
+    words: [["生[日]", "shēng rì", "🎂"], ["[日]出", "rì chū", "🌅"], ["[日]历", "rì lì", "📅"]] },
+  { c: "月", py: "yuè", zu: "月亮", pic: "🌙", cap: "[月]像弯弯的月亮",
+    tip: "象形字：像弯弯的月亮，里面两横是月亮上的影子。太阳白天出来，月亮晚上出来。",
+    words: [["[月]亮", "yuè liang", "🌛"], ["[月]饼", "yuè bing", "🥮"], ["[月]光", "yuè guāng", "🌕"]] },
+  { c: "了", py: "le", zu: "好了", pic: "🌸", cap: "花开[了]", abstract: true,
+    tip: "“了”画不出来。它的意思是“事情已经发生了、做完了”。平时说话就在用：吃饱了、睡着了、下雨了。和孩子说话时，听到“了”就一起拍拍手。",
+    note: "“了”在“了不起”里读 liǎo，先只学 le。",
+    words: [["下雨[了]", "xià yǔ le", "🌧️"], ["吃饱[了]", "chī bǎo le", "😋"], ["睡着[了]", "shuì zháo le", "😴"]] },
+  { c: "个", py: "gè", zu: "一个", pic: "🍎🍎🍎", many: true, cap: "一[个]、两[个]、三[个]苹果", abstract: true,
+    tip: "“个”是数东西用的字。数苹果、数积木的时候说：一个、两个、三个。像一个人（人字头）站着，下面一竖是他的身子。",
+    words: [["一[个]苹果", "yí gè píng guǒ", "🍎"], ["两[个]人", "liǎng gè rén", "🧑‍🤝‍🧑"], ["三[个]球", "sān gè qiú", "⚽⚽⚽", true]] }
+];
+const pairOf = ch => PAIRS.findIndex(p => p.keys.includes(ch.c));
+const tone = ch => "p" + (pairOf(ch) + 1);
+const byChar = c => CHARS.find(x => x.c === c);
+
+const $ = id => document.getElementById(id);
+let mode = "learn";
+let testType = "pic";
+let current = 0;
+let upto = PAIRS.length - 1;
+let showPy = true;
+try {
+  const saved = JSON.parse(localStorage.getItem("hanzi-upto"));
+  if (Number.isInteger(saved) && saved >= 0 && saved < PAIRS.length) upto = saved;
+  if (localStorage.getItem("hanzi-py") === "0") showPy = false;
+} catch (e) {}
+const save = () => { try { localStorage.setItem("hanzi-upto", JSON.stringify(upto)); localStorage.setItem("hanzi-py", showPy ? "1" : "0"); } catch (e) {} };
+
+const plain = w => w.replace(/[\[\]]/g, "");
+const marked = w => w.replace(/\[(.+?)\]/g, "<mark>$1</mark>");
+const learnedChars = () => PAIRS.slice(0, upto + 1).flatMap(p => p.keys).map(byChar);
+
+function speak(text) {
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-CN"; u.rate = 0.7;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+const sayChar = ch => speak(ch.c + "，" + ch.zu + "的" + ch.c);
+function shuffled(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+function btn(label, cls, fn) {
+  const b = el("button", cls);
+  b.type = "button"; b.textContent = label;
+  b.addEventListener("click", fn);
+  return b;
+}
+const emoji = (e, many, extra) => '<span class="emoji' + (many ? " many" : "") + (extra ? " " + extra : "") + '" aria-hidden="true">' + e + '</span>';
+
+/* ---------- 田字格 with stroke order and tracing ---------- */
+const GRID_LINES =
+  '<svg class="lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' +
+  '<g stroke="var(--grid)" stroke-width=".6" stroke-dasharray="3 2.4" fill="none" vector-effect="non-scaling-stroke">' +
+  '<line x1="50" y1="0" x2="50" y2="100"/><line x1="0" y1="50" x2="100" y2="50"/>' +
+  '<line x1="0" y1="0" x2="100" y2="100"/><line x1="100" y1="0" x2="0" y2="100"/></g></svg>';
+
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function charBox(ch, parent) {
+  const box = el("div", "tzg", GRID_LINES);
+  parent.appendChild(box); // in the page first, so the writer can measure it
+  const target = el("div", "target");
+  box.appendChild(target);
+  const data = window.HANZI_STROKES && HANZI_STROKES[ch.c];
+  if (!window.HanziWriter || !data) {
+    box.appendChild(el("div", "fallback", ch.c));
+    return { box, writer: null, strokes: 0 };
+  }
+  const size = Math.round(box.clientWidth || 260);
+  const writer = HanziWriter.create(target, ch.c, {
+    width: size, height: size, padding: Math.round(size * .06),
+    charDataLoader: () => data,
+    strokeColor: cssVar("--fg"), radicalColor: cssVar("--fg"), outlineColor: cssVar("--line"),
+    drawingColor: cssVar("--focus"), highlightColor: cssVar("--good"),
+    strokeAnimationSpeed: .8, delayBetweenStrokes: 350, showOutline: true
+  });
+  return { box, writer, strokes: data.strokes.length };
+}
+
+/* ---------- Learn ---------- */
+function renderUpto() {
+  const box = $("upto");
+  box.innerHTML = "";
+  PAIRS.forEach((p, i) => {
+    const b = btn(p.keys.join(""), "", () => { upto = i; save(); refresh(); });
+    b.setAttribute("aria-pressed", i === upto);
+    b.setAttribute("aria-label", "学到" + p.name + " " + p.keys.join(" "));
+    box.appendChild(b);
+  });
+}
+
+function renderStrip() {
+  const strip = $("strip");
+  strip.innerHTML = "";
+  PAIRS.forEach((p, i) => {
+    const g = el("div", "group p" + (i + 1));
+    g.appendChild(el("div", "group-label", p.name + (i > upto ? " · 还没学" : "")));
+    const tiles = el("div", "tiles");
+    p.keys.forEach(k => {
+      const ch = byChar(k);
+      const t = btn(k, "tile", () => { current = CHARS.indexOf(ch); renderLearn(); });
+      t.setAttribute("aria-pressed", CHARS.indexOf(ch) === current);
+      t.setAttribute("aria-label", "汉字 " + k);
+      tiles.appendChild(t);
+    });
+    g.appendChild(tiles);
+    strip.appendChild(g);
+  });
+}
+
+function renderLearn() {
+  renderStrip();
+  const ch = CHARS[current], p = PAIRS[pairOf(ch)];
+  const card = $("card");
+  card.className = "hanzi " + tone(ch);
+  card.innerHTML = "";
+
+  const left = el("div", "char-side");
+  left.appendChild(el("div", "kind", p.name + " · " + p.about));
+  left.appendChild(el("div", "pinyin" + (showPy ? "" : " off"), ch.py));
+  card.appendChild(left);
+  const { writer, strokes } = charBox(ch, left);
+  const status = el("div", "strokes", strokes ? "一共 " + strokes + " 画" : "");
+  left.appendChild(status);
+  const row = el("div", "write-row");
+  if (writer) {
+    const reset = () => { status.className = "strokes"; status.textContent = "一共 " + strokes + " 画"; };
+    row.append(
+      btn("▶ 看笔顺", "pill", () => { writer.cancelQuiz(); reset(); writer.showOutline(); writer.animateCharacter(); }),
+      btn("✍️ 跟着写", "pill", () => {
+        reset();
+        status.textContent = "用手指按笔顺描一描（第 1 画，共 " + strokes + " 画）";
+        writer.quiz({
+          leniency: 1.5, showHintAfterMisses: 2, highlightOnComplete: true,
+          onCorrectStroke: d => { if (d.strokesRemaining) status.textContent = "写对了！第 " + (d.strokeNum + 2) + " 画，共 " + strokes + " 画"; },
+          onComplete: d => {
+            status.className = "strokes done";
+            status.textContent = d.totalMistakes ? "写完了！🎉" : "一笔都没错，真棒！🎉";
+            sayChar(ch);
+          }
+        });
+      })
+    );
+  }
+  row.appendChild(btn("🔊 读一读", "pill", () => sayChar(ch)));
+  left.appendChild(row);
+
+  const info = el("div", "info");
+  const pic = el("button", "picture", emoji(ch.pic, ch.many) + '<span class="cap"><b>' + marked(ch.cap) + '</b><span class="say">🔊 点一下听</span></span>');
+  pic.type = "button";
+  pic.setAttribute("aria-label", "听 " + plain(ch.cap));
+  pic.addEventListener("click", () => speak(plain(ch.cap)));
+  info.appendChild(pic);
+  info.appendChild(el("div", "tip", "<b>家长怎么教</b>" + ch.tip + (ch.note ? "<br>" + ch.note : "")));
+  const words = el("div", "words");
+  ch.words.forEach(([w, wp, e, many]) => {
+    const b = el("button", "word", emoji(e, many) + '<span class="wtext">' + marked(w) + '</span>' +
+      '<span class="wpy">' + (showPy ? wp : "&nbsp;") + '</span><span class="say">🔊 点一下听</span>');
+    b.type = "button";
+    b.setAttribute("aria-label", "听词语 " + plain(w));
+    b.addEventListener("click", () => speak(plain(w)));
+    words.appendChild(b);
+  });
+  info.appendChild(words);
+  const partner = byChar(p.keys.find(k => k !== ch.c));
+  info.appendChild(btn("和它是一对的字：" + partner.c + " →", "pill on", () => { current = CHARS.indexOf(partner); renderLearn(); }));
+  card.appendChild(info);
+
+  const i = current;
+  const nav = el("div", "nav");
+  const prev = btn("← 上一个", "pill", () => { current--; renderLearn(); });
+  const next = btn("下一个 →", "pill", () => { current++; renderLearn(); });
+  prev.disabled = i === 0; prev.style.visibility = i === 0 ? "hidden" : "";
+  next.disabled = i === CHARS.length - 1; next.style.visibility = i === CHARS.length - 1 ? "hidden" : "";
+  nav.append(prev, next);
+  card.appendChild(nav);
+}
+
+/* ---------- Test ---------- */
+const T = { qs: [], i: 0, right: 0, missed: [] };
+const pool = () => testType === "pic" ? learnedChars().filter(ch => !ch.abstract) : learnedChars();
+
+function startTest(qs) {
+  T.qs = qs; T.i = 0; T.right = 0; T.missed = [];
+  $("result").hidden = true;
+  $("test").hidden = false;
+  showQuestion();
+}
+const newRound = () => startTest(shuffled(pool()));
+
+function setProgress() {
+  const n = T.qs.length;
+  $("count").textContent = "第 " + (T.i + 1) + " 题，共 " + n + " 题";
+  $("right").textContent = "答对 " + T.right;
+  $("bar").style.width = (T.i / n * 100) + "%";
+}
+function showQuestion() {
+  setProgress();
+  const slot = $("qslot");
+  slot.innerHTML = "";
+  const q = T.qs[T.i];
+  slot.appendChild(testType === "pic" ? picQuestion(q) : testType === "ear" ? earQuestion(q) : flipQuestion(q));
+}
+function finish(ok) {
+  if (ok) T.right++; else T.missed.push(T.qs[T.i]);
+  $("right").textContent = "答对 " + T.right;
+}
+function advance() { T.i++; if (T.i < T.qs.length) showQuestion(); else showResult(); }
+const nextButton = () => btn(T.i + 1 < T.qs.length ? "下一题 →" : "看成绩", "big", advance);
+
+// Picks: the answer plus up to two other characters from what the child has learned
+function options(q, list) {
+  return shuffled([q, ...shuffled(list.filter(x => x !== q)).slice(0, 2)]);
+}
+function choose(stage, choices, b, ok, q, msgNo) {
+  choices.querySelectorAll("button").forEach(x => {
+    x.disabled = true;
+    if (x.dataset.c === q.c) x.classList.add("right");
+  });
+  if (!ok) b.classList.add("wrong");
+  const feedback = stage.querySelector(".feedback");
+  feedback.className = "feedback " + (ok ? "ok" : "no");
+  feedback.textContent = ok ? "答对了！" : msgNo;
+  stage.querySelector(".answer").innerHTML = '<span class="' + tone(q) + '">' + marked(q.cap) + '</span>';
+  sayChar(q);
+  finish(ok);
+  stage.appendChild(nextButton());
+}
+
+// Only the character is shown; the pictures are the answer check
+function picQuestion(q) {
+  const stage = el("div", "stage " + tone(q));
+  stage.appendChild(el("div", "prompt", "这是什么字？点出对的图片"));
+  stage.appendChild(el("div", "q-char", q.c));
+  const choices = el("div", "choices");
+  options(q, pool()).forEach(o => {
+    const b = btn("", "choice pic" + (o.many ? " many" : ""), () => choose(stage, choices, b, o === q, q, "是这个：" + q.pic));
+    b.textContent = o.pic;
+    b.dataset.c = o.c;
+    b.setAttribute("aria-label", plain(o.cap));
+    choices.appendChild(b);
+  });
+  stage.append(choices, el("div", "answer"), el("div", "feedback"));
+  return stage;
+}
+
+function earQuestion(q) {
+  const stage = el("div", "stage " + tone(q));
+  stage.appendChild(el("div", "prompt", "听一听，点出对的字"));
+  const listen = btn("🔊", "listen", () => sayChar(q));
+  listen.setAttribute("aria-label", "再听一遍");
+  stage.appendChild(listen);
+  const choices = el("div", "choices");
+  options(q, pool()).forEach(o => {
+    const b = btn(o.c, "choice", () => choose(stage, choices, b, o === q, q, "是 " + q.c + "，" + q.zu + "的" + q.c));
+    b.dataset.c = o.c;
+    choices.appendChild(b);
+  });
+  stage.append(choices, el("div", "answer"), el("div", "feedback"));
+  setTimeout(() => sayChar(q), 250);
+  return stage;
+}
+
+function flipQuestion(q) {
+  const box = el("div", "test " + tone(q));
+  box.appendChild(el("div", "prompt", "先读出这个字，说一个词，再翻开看"));
+  const card = el("button", "card");
+  card.type = "button";
+  card.setAttribute("aria-label", "汉字 " + q.c + "，点一下翻面");
+  card.innerHTML =
+    '<div class="inner">' +
+      '<div class="face"><div class="q-char">' + q.c + '</div></div>' +
+      '<div class="face back"><div class="pinyin">' + q.py + '</div>' +
+        '<div class="big-emoji' + (q.many ? " many" : "") + '" aria-hidden="true">' + q.pic + '</div>' +
+        '<div class="mini">' + q.words.map(([w]) => '<span>' + marked(w) + '</span>').join("") + '</div>' +
+      '</div>' +
+    '</div>';
+  const actions = el("div", "actions");
+  const flip = () => {
+    if (card.classList.contains("flipped")) return;
+    card.classList.add("flipped");
+    sayChar(q);
+    actions.innerHTML = "";
+    actions.append(
+      btn("✓ 认对了", "big good", () => { finish(true); advance(); }),
+      btn("✗ 没认出", "big miss", () => { finish(false); advance(); })
+    );
+  };
+  card.addEventListener("click", flip);
+  actions.appendChild(btn("翻开看答案", "big", flip));
+  box.append(card, actions);
+  setTimeout(() => card.focus({ preventScroll: true }), 0);
+  return box;
+}
+
+function showResult() {
+  $("bar").style.width = "100%";
+  $("test").hidden = true;
+  const n = T.qs.length, r = T.right;
+  const box = $("result");
+  box.hidden = false;
+  box.innerHTML =
+    '<div class="score">' + r + '<small> / ' + n + '</small></div>' +
+    '<p>' + (r === n ? "全部答对了，真棒！" : "答对了 " + r + " 题。下面这些字再练练：") + '</p>';
+  if (T.missed.length) {
+    const wrap = el("div", "missed");
+    T.missed.forEach(m => wrap.appendChild(el("div", "chip " + tone(m), '<i>' + m.c + '</i>' + m.zu)));
+    box.appendChild(wrap);
+  }
+  const acts = el("div", "actions");
+  if (T.missed.length) {
+    const missed = T.missed.slice();
+    acts.appendChild(btn("只练错的", "big miss", () => startTest(shuffled(missed))));
+  }
+  acts.appendChild(btn("再来一轮", "big", newRound));
+  acts.appendChild(btn("回去学习", "big", () => { mode = "learn"; if (T.missed.length) current = CHARS.indexOf(T.missed[0]); refresh(); }));
+  box.appendChild(acts);
+}
+
+/* ---------- Switches ---------- */
+const HINTS = {
+  learn: "按字帖的顺序，两个字一对。点“看笔顺”看怎么写，点“跟着写”用手指描；点图片和词语听读音。",
+  test: {
+    pic: "只给字，不给拼音：孩子认出字，再点对的图片。“了”和“个”画不出来，不在这个测试里。",
+    ear: "听读音，从几个字里找出来。",
+    flip: "孩子看字读出来，家长翻开对答案，再点“认对了”或“没认出”。"
+  }
+};
+function refresh() {
+  $("m-learn").setAttribute("aria-pressed", mode === "learn");
+  $("m-test").setAttribute("aria-pressed", mode === "test");
+  ["pic", "ear", "flip"].forEach(t => $("t-" + t).setAttribute("aria-pressed", testType === t));
+  $("py").setAttribute("aria-pressed", showPy);
+  $("py").textContent = showPy ? "拼音：显示" : "拼音：隐藏";
+  $("py").hidden = mode !== "learn";
+  renderUpto();
+  $("learn").hidden = $("card").hidden = mode !== "learn";
+  $("testbox").hidden = mode !== "test";
+  $("hint").textContent = mode === "learn" ? HINTS.learn : HINTS.test[testType];
+  if (mode === "learn") renderLearn();
+  else newRound();
+}
+$("m-learn").addEventListener("click", () => { mode = "learn"; refresh(); });
+$("m-test").addEventListener("click", () => { mode = "test"; refresh(); });
+$("t-pic").addEventListener("click", () => { testType = "pic"; refresh(); });
+$("t-ear").addEventListener("click", () => { testType = "ear"; refresh(); });
+$("t-flip").addEventListener("click", () => { testType = "flip"; refresh(); });
+$("py").addEventListener("click", () => { showPy = !showPy; save(); refresh(); });
+
+// Open on the first character of the newest pair the child is learning
+current = CHARS.indexOf(byChar(PAIRS[upto].keys[0]));
+refresh();
+</script>
+</body>
+</html>
