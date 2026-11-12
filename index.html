@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Shapes & Phonics</title>
+<title>宝宝学习角</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@700&family=Baloo+2:wght@600;800&family=ZCOOL+KuaiLe&display=swap">
@@ -49,8 +49,7 @@ body { font-family: var(--font-ui); }
 }
 h1 { margin: 0; font-family: var(--font-zh); font-weight: 400; font-size: clamp(30px, 6vw, 44px); line-height: 1.15; text-wrap: balance; }
 .lead { margin: 6px 0 0; color: var(--muted); font-size: 16px; }
-.games { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-@media (max-width: 620px) { .games { grid-template-columns: minmax(0, 1fr); } }
+.games { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 18px; }
 .game {
   display: grid; gap: 14px; padding: 22px; color: var(--fg); text-decoration: none;
   background: var(--card); border: 2px solid var(--line); border-radius: 24px; box-shadow: 0 4px 0 var(--line);
@@ -63,6 +62,8 @@ h1 { margin: 0; font-family: var(--font-zh); font-weight: 400; font-size: clamp(
 .letters { font: 700 58px/1 var(--font-letter); display: flex; gap: 10px; }
 .letters .v { color: var(--vowel); }
 .letters .c { color: var(--cons); }
+.hz { font: 400 58px/1 "Kaiti SC", "STKaiti", "KaiTi", "楷体", serif; display: flex; gap: 10px; }
+.hz span:nth-child(1) { color: var(--c4); } .hz span:nth-child(2) { color: var(--c1); } .hz span:nth-child(3) { color: var(--c3); }
 .game h2 { margin: 0; font-family: var(--font-en); font-weight: 800; font-size: 30px; line-height: 1; }
 .game h2 span { font-family: var(--font-zh); font-weight: 400; font-size: .75em; color: var(--muted); margin-left: .35em; }
 .game ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 15px; line-height: 1.5; }
@@ -105,6 +106,17 @@ body { margin: 0; font-size: 14px; -webkit-text-size-adjust: 100%; }
         <li>5 个短元音 + 21 个辅音，可以先学元音，也可以按 s a t i p n 混着学</li>
         <li>每个音 3 个例词，配图片，点一下读单词</li>
         <li>听音游戏、拼读 s‑a‑t → sat，还有三种测试</li>
+      </ul>
+      <span class="go">开始 →</span>
+    </a>
+
+    <a class="game" href="hanzi.html">
+      <div class="preview hz" aria-hidden="true"><span>一</span><span>水</span><span>山</span></div>
+      <h2>汉字<span>认汉字</span></h2>
+      <ul>
+        <li>按字帖顺序两个一对：一到十，再到多少、水火、山石、日月、了个</li>
+        <li>看笔顺动画，用手指在田字格里跟着写</li>
+        <li>每个字配图和 3 个词语，还有三种测试</li>
       </ul>
       <span class="go">开始 →</span>
     </a>
