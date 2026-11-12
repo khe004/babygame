@@ -53,11 +53,7 @@
 - 加载失败（文件缺失、离线）时回退到现在的做法：单词用浏览器语音读，单独的音只显示音标。
 - 音频要在用户点击之后才播放（浏览器不允许自动播放有声音的内容）。
 
-### 2. 换掉不贴切的例词图片
-
-下面这些 emoji 和单词对不太上，可以换词或换图：ill 🤒、zipper 🤐、zero 0️⃣、iguana 🦎（其实是普通蜥蜴）、yellow 💛、up ⬆️、upside down 🙃。
-
-### 3. 发布网址
+### 2. 发布网址
 
 开启 GitHub Pages（Settings → Pages，Source 选 `main`），之后可以用 `https://khe004.github.io/babygame/` 在手机和平板上打开。
 
