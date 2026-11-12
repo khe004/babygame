@@ -112,15 +112,16 @@ h1 span { font-size: .6em; color: var(--muted); margin-left: .4em; }
 
 .info { display: grid; align-content: start; gap: 14px; }
 .picture {
-  display: flex; align-items: center; gap: 16px; padding: 14px 18px; cursor: pointer; text-align: left; color: var(--fg);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px 18px; cursor: pointer; text-align: left; color: var(--fg);
   background: var(--soft); border: 2px solid var(--line); border-radius: 18px;
 }
 .picture:hover { border-color: var(--tone); }
 .picture .emoji { font-size: clamp(54px, 9vw, 80px); }
-.picture .emoji.many { font-size: clamp(30px, 5vw, 42px); max-width: 4.4em; line-height: 1.15; }
+.picture .emoji.many { font-size: clamp(24px, 4.4vw, 38px); line-height: 1.15; flex: none; }
 .cap { display: grid; gap: 4px; }
 .cap b { font: 400 clamp(26px, 4.4vw, 36px)/1.15 var(--font-kai); }
 .emoji { line-height: 1; font-family: var(--font-emoji); }
+.many { white-space: pre-line; }
 mark { background: none; color: var(--tone); text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 5px; }
 .tip { background: var(--tip); border-radius: 14px; padding: 12px 14px; font-size: 15px; line-height: 1.6; }
 .tip b { display: block; font-size: 12px; color: var(--muted); letter-spacing: .06em; margin-bottom: 2px; }
@@ -164,7 +165,7 @@ mark { background: none; color: var(--tone); text-decoration: underline; text-de
   font: 400 60px/1 var(--font-kai);
 }
 .choice.pic { font: 54px/1 var(--font-emoji); }
-.choice.pic.many { font-size: 26px; max-width: 150px; line-height: 1.15; }
+.choice.pic.many { font-size: 26px; line-height: 1.15; height: auto; min-height: 96px; padding: 8px 10px; }
 .choice.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--soft)); }
 .choice.wrong { border-color: var(--miss); opacity: .55; }
 .choice:disabled { cursor: default; }
@@ -254,14 +255,53 @@ mark { background: none; color: var(--tone); text-decoration: underline; text-de
 // zu is the word used when reading the character aloud ("水，喝水的水"), which also gives 了 its "le" reading.
 // abstract: no picture of the thing itself, so it is left out of the picture test.
 const PAIRS = [
-  { name: "第一对", about: "一对反义词", keys: ["多", "少"] },
-  { name: "第二对", about: "一对反义词", keys: ["水", "火"] },
-  { name: "第三对", about: "山上有石头", keys: ["山", "石"] },
-  { name: "第四对", about: "白天和晚上", keys: ["日", "月"] },
-  { name: "第五对", about: "说话常用的字", keys: ["了", "个"] }
+  { about: "数一数", num: true, keys: ["一", "二"] },
+  { about: "数一数", num: true, keys: ["三", "四"] },
+  { about: "数一数", num: true, keys: ["五", "六"] },
+  { about: "数一数", num: true, keys: ["七", "八"] },
+  { about: "数一数", num: true, keys: ["九", "十"] },
+  { about: "一对反义词", keys: ["多", "少"] },
+  { about: "一对反义词", keys: ["水", "火"] },
+  { about: "山上有石头", keys: ["山", "石"] },
+  { about: "白天和晚上", keys: ["日", "月"] },
+  { about: "说话常用的字", keys: ["了", "个"] }
 ];
+PAIRS.forEach((p, i) => { p.name = "第" + "一二三四五六七八九十"[i] + "对"; });
+// Number pictures are apples to count; the caption reads "数一数：三"
+// Rows of five, like a ten-frame, so 8 and 9 are easy to count
+const APPLES = n => "🍎".repeat(Math.min(n, 5)) + (n > 5 ? "\n" + "🍎".repeat(n - 5) : "");
 const CHARS = [
-  { c: "多", py: "duō", zu: "好多", pic: "🍬🍬🍬🍬🍬🍬", many: true, cap: "好[多]糖",
+  { c: "一", py: "yī", zu: "一个", pic: APPLES(1), cap: "数一数：[一]",
+    tip: "一横就是一。一、二、三都是横：几横就是几，可以用筷子或手指摆一摆。",
+    words: [["[一]只猫", "yì zhī māo", "🐱"], ["[一]天", "yì tiān", "☀️"], ["第[一]", "dì yī", "🥇"]] },
+  { c: "二", py: "èr", zu: "二月", pic: APPLES(2), many: true, cap: "数一数：[二]",
+    tip: "两横，上面短，下面长。数数的时候说“二”，说有几个东西时常说“两个”。",
+    words: [["[二]月", "èr yuè", "📅"], ["第[二]", "dì èr", "🥈"], ["[二]楼", "èr lóu", "🏢"]] },
+  { c: "三", py: "sān", zu: "三个", pic: APPLES(3), many: true, cap: "数一数：[三]",
+    tip: "三横，中间最短，最下面最长。",
+    words: [["[三]角形", "sān jiǎo xíng", "🔺"], ["[三]明治", "sān míng zhì", "🥪"], ["第[三]", "dì sān", "🥉"]] },
+  { c: "四", py: "sì", zu: "四个", pic: APPLES(4), many: true, cap: "数一数：[四]",
+    tip: "四不是四横了：外面一个方框，里面两笔像两条腿。和孩子数一数小狗有几条腿。",
+    words: [["[四]条腿", "sì tiáo tuǐ", "🐕"], ["[四]月", "sì yuè", "🌷"], ["[四]方形", "sì fāng xíng", "🟦"]] },
+  { c: "五", py: "wǔ", zu: "五个", pic: APPLES(5), many: true, cap: "数一数：[五]",
+    tip: "伸出一只手，五个手指头就是五。",
+    words: [["[五]个手指", "wǔ gè shǒu zhǐ", "🖐️"], ["[五]角星", "wǔ jiǎo xīng", "⭐"], ["[五]颜六色", "wǔ yán liù sè", "🌈"]] },
+  { c: "六", py: "liù", zu: "六个", pic: APPLES(6), many: true, cap: "数一数：[六]",
+    tip: "上面一点一横像一顶小帽子，下面两点像两只脚。六一儿童节是小朋友的节日。",
+    words: [["[六]一", "liù yī", "🎈"], ["[六]条腿", "liù tiáo tuǐ", "🐜"], ["五颜[六]色", "wǔ yán liù sè", "🌈"]] },
+  { c: "七", py: "qī", zu: "七个", pic: APPLES(7), many: true, cap: "数一数：[七]",
+    tip: "一横，再一个竖弯钩，像一把倒过来的小勺子。一个星期有七天。",
+    words: [["[七]星瓢虫", "qī xīng piáo chóng", "🐞"], ["[七]点", "qī diǎn", "🕖"], ["[七]月", "qī yuè", "🍉"]] },
+  { c: "八", py: "bā", zu: "八个", pic: APPLES(8), many: true, cap: "数一数：[八]",
+    tip: "一撇一捺，往两边分开。章鱼有八只脚，所以也叫八爪鱼。",
+    words: [["[八]爪鱼", "bā zhuǎ yú", "🐙"], ["[八]点", "bā diǎn", "🕗"], ["[八]条腿", "bā tiáo tuǐ", "🕷️"]] },
+  { c: "九", py: "jiǔ", zu: "九个", pic: APPLES(9), many: true, cap: "数一数：[九]",
+    tip: "先写一撇，再写横折弯钩，像一个人弯着腰伸出手。",
+    words: [["[九]点", "jiǔ diǎn", "🕘"], ["[九]月", "jiǔ yuè", "🎒"], ["[九]只小狗", "jiǔ zhī xiǎo gǒu", "🐶"]] },
+  { c: "十", py: "shí", zu: "十个", pic: APPLES(10), many: true, cap: "数一数：[十]",
+    tip: "一横一竖交叉在一起。两只手一共十个手指头。",
+    words: [["[十]个手指", "shí gè shǒu zhǐ", "🙌"], ["[十]字路口", "shí zì lù kǒu", "🚦"], ["[十]月", "shí yuè", "🎃"]] },
+  { c: "多", py: "duō", zu: "好多", pic: "🍬🍬🍬🍬🍬\n🍬🍬🍬🍬🍬\n🍬🍬🍬🍬🍬", many: true, cap: "好[多]糖",
     tip: "多和少是一对。拿一堆积木和一块积木摆在一起，问：哪边多？",
     words: [["好[多]", "hǎo duō", "🎈🎈🎈🎈", true], ["[多]云", "duō yún", "⛅"], ["[多]少", "duō shǎo", "🤔"]] },
   { c: "少", py: "shǎo", zu: "很少", pic: "🍬", cap: "只有一颗糖，好[少]",
@@ -294,7 +334,8 @@ const CHARS = [
     words: [["一[个]苹果", "yí gè píng guǒ", "🍎"], ["两[个]人", "liǎng gè rén", "🧑‍🤝‍🧑"], ["三[个]球", "sān gè qiú", "⚽⚽⚽", true]] }
 ];
 const pairOf = ch => PAIRS.findIndex(p => p.keys.includes(ch.c));
-const tone = ch => "p" + (pairOf(ch) + 1);
+const tone = ch => "p" + (pairOf(ch) % 5 + 1);
+const isNum = ch => !!PAIRS[pairOf(ch)].num;
 const byChar = c => CHARS.find(x => x.c === c);
 
 const $ = id => document.getElementById(id);
@@ -391,7 +432,7 @@ function renderStrip() {
   const strip = $("strip");
   strip.innerHTML = "";
   PAIRS.forEach((p, i) => {
-    const g = el("div", "group p" + (i + 1));
+    const g = el("div", "group p" + (i % 5 + 1));
     g.appendChild(el("div", "group-label", p.name + (i > upto ? " · 还没学" : "")));
     const tiles = el("div", "tiles");
     p.keys.forEach(k => {
@@ -506,9 +547,12 @@ function finish(ok) {
 function advance() { T.i++; if (T.i < T.qs.length) showQuestion(); else showResult(); }
 const nextButton = () => btn(T.i + 1 < T.qs.length ? "下一题 →" : "看成绩", "big", advance);
 
-// Picks: the answer plus up to two other characters from what the child has learned
+// Picks: the answer plus up to two other characters from what the child has learned.
+// Numbers are only mixed with numbers, so six apples (六) never sits next to a heap of sweets (多).
 function options(q, list) {
-  return shuffled([q, ...shuffled(list.filter(x => x !== q)).slice(0, 2)]);
+  const same = list.filter(x => x !== q && isNum(x) === isNum(q));
+  const pick = same.length >= 2 ? same : list.filter(x => x !== q);
+  return shuffled([q, ...shuffled(pick).slice(0, 2)]);
 }
 function choose(stage, choices, b, ok, q, msgNo) {
   choices.querySelectorAll("button").forEach(x => {
@@ -619,7 +663,7 @@ function showResult() {
 const HINTS = {
   learn: "按字帖的顺序，两个字一对。点“看笔顺”看怎么写，点“跟着写”用手指描；点图片和词语听读音。",
   test: {
-    pic: "只给字，不给拼音：孩子认出字，再点对的图片。“了”和“个”画不出来，不在这个测试里。",
+    pic: "只给字，不给拼音：孩子认出字，再点对的图片（数字就数一数苹果）。“了”和“个”画不出来，不在这个测试里。",
     ear: "听读音，从几个字里找出来。",
     flip: "孩子看字读出来，家长翻开对答案，再点“认对了”或“没认出”。"
   }
