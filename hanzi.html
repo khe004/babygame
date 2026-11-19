@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>认汉字</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600&family=ZCOOL+KuaiLe&display=swap">
+<style>
+/* Layout: header with mode tabs and group filter; "learn" is a grid of flip cards (character first, picture on the back);
+   tests show one question at a time. Characters sit in a 田字格, the practice grid of Chinese exercise books. */
+:root {
+  --bg: #f1f2ec;
+  --fg: #262a22;
+  --muted: #646b5c;
+  --card: #ffffff;
+  --soft: #f7f8f3;
+  --line: #d9dccf;
+  --grid: #e3a29a;
+  --ink: #2a2e26;
+  --accent: #b3402f;
+  --focus: #2b6cb0;
+  --good: #1f8a56;
+  --miss: #c2462a;
+  --font-han: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "Noto Serif SC", serif;
+  --font-zh: "ZCOOL KuaiLe", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-ui: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171a15; --fg: #eceee6; --muted: #a2a897; --card: #22261f; --soft: #1c201a; --line: #383d33;
+    --grid: #8a4f48; --ink: #f1f2ea; --accent: #f08a74; --focus: #7fb3ee; --good: #4cc98b; --miss: #ff8a66;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171a15; --fg: #eceee6; --muted: #a2a897; --card: #22261f; --soft: #1c201a; --line: #383d33;
+  --grid: #8a4f48; --ink: #f1f2ea; --accent: #f08a74; --focus: #7fb3ee; --good: #4cc98b; --miss: #ff8a66;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html, body { background: var(--bg); color: var(--fg); }
+body { margin: 0; font: 14px var(--font-ui); -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+button { font-family: inherit; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+.wrap {
+  max-width: 1040px; margin: 0 auto;
+  padding-block: 24px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px;
+}
+.home { display: inline-block; margin-bottom: 8px; color: var(--muted); font-size: 15px; font-weight: 600; text-decoration: none; }
+.home:hover { color: var(--fg); }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+h1 { margin: 0; font-family: var(--font-zh); font-weight: 400; font-size: clamp(30px, 5vw, 42px); line-height: 1.1; }
+.hint { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+
+.switches { display: flex; flex-wrap: wrap; gap: 10px; }
+.tabs { display: inline-flex; flex-wrap: wrap; background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.tabs button { all: unset; cursor: pointer; font: 700 15px var(--font-ui); padding: 7px 14px; border-radius: 999px; color: var(--muted); }
+.tabs button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.tabs button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.tabs .gchars { font-family: var(--font-han); font-weight: 600; letter-spacing: .05em; }
+#groups { border-radius: 18px; }
+#groups button { border-radius: 14px; }
+.pill { font: 600 15px var(--font-ui); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 8px 16px; cursor: pointer; }
+.big { font: 700 18px var(--font-ui); border-radius: 16px; padding: 12px 24px; cursor: pointer; color: var(--fg); background: var(--card); border: 2px solid var(--line); box-shadow: 0 3px 0 var(--line); }
+.big.good { border-color: var(--good); color: var(--good); }
+.big.miss { border-color: var(--miss); color: var(--miss); }
+
+/* 田字格: outer box, dashed centre cross */
+.tzg {
+  position: relative; aspect-ratio: 1; width: 100%; max-width: 100%;
+  border: 2px solid var(--grid); background: var(--card);
+  display: grid; place-items: center;
+}
+.tzg::before, .tzg::after { content: ""; position: absolute; pointer-events: none; }
+.tzg::before { left: 0; right: 0; top: 50%; border-top: 1.5px dashed var(--grid); }
+.tzg::after { top: 0; bottom: 0; left: 50%; border-left: 1.5px dashed var(--grid); }
+.han { position: relative; z-index: 1; font-family: var(--font-han); font-weight: 600; color: var(--ink); line-height: 1; font-size: 72cqw; }
+.tzg { container-type: inline-size; }
+
+/* Learn grid of flip cards */
+.grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 860px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .grid { gap: 10px; } }
+.card { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; aspect-ratio: 3 / 4; perspective: 900px; border-radius: 18px; }
+.card:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+.inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.3,1.4,.5,1); }
+.card.flipped .inner { transform: rotateY(180deg); }
+.face {
+  position: absolute; inset: 0; border-radius: 18px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border: 2px solid var(--line); background: var(--card); box-shadow: 0 4px 0 var(--line);
+  display: grid; place-items: center; align-content: center; gap: 6px; padding: 12%; text-align: center;
+}
+.face.back { transform: rotateY(180deg); background: var(--soft); padding: 8%; }
+.emoji { font-size: clamp(40px, 7vw, 64px); line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.py { font-size: clamp(14px, 2vw, 18px); color: var(--accent); font-weight: 600; }
+.word { font-family: var(--font-han); font-weight: 600; font-size: clamp(20px, 3vw, 28px); }
+.word b { color: var(--accent); font-weight: 600; }
+
+/* Tests */
+.test { display: grid; justify-items: center; gap: 18px; }
+.progress { width: min(380px, 100%); display: grid; gap: 6px; }
+.progress-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--good); border-radius: inherit; transition: width .3s; }
+.stage { width: min(460px, 100%); background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 24px 18px; display: grid; justify-items: center; gap: 16px; text-align: center; }
+.prompt { font-size: 17px; font-weight: 600; }
+.q-emoji { font-size: 110px; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.listen { font-size: 40px; width: 96px; height: 96px; border-radius: 50%; cursor: pointer; background: var(--soft); border: 3px solid var(--line); }
+.choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.choice { all: unset; cursor: pointer; width: 96px; border-radius: 6px; }
+.choice .tzg { border-width: 3px; }
+.choice.right .tzg { border-color: var(--good); box-shadow: 0 0 0 3px var(--good); }
+.choice.wrong { opacity: .45; }
+.choice:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+.feedback { font-weight: 700; font-size: 16px; min-height: 22px; }
+.feedback.ok { color: var(--good); }
+.feedback.no { color: var(--miss); }
+.flip .card { width: min(260px, 70vw); }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+
+.result { display: grid; justify-items: center; gap: 14px; text-align: center; max-width: 600px; margin: 0 auto; }
+.score { font-size: 64px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.score small { font-size: .45em; color: var(--muted); }
+.result p { margin: 0; font-size: 17px; }
+.missed { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.chip { display: grid; justify-items: center; gap: 4px; width: 84px; padding: 8px; background: var(--card); border: 2px solid var(--line); border-radius: 14px; font-size: 13px; }
+.chip .tzg { width: 56px; }
+.chip span { font-size: 22px; line-height: 1; }
+
+@media (prefers-reduced-motion: reduce) { .inner, .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <a class="home" href="index.html">← 返回首页</a>
+      <h1>认汉字</h1>
+      <p class="hint" id="hint">先看字，说一说是什么字；再点一下翻过来，看图和词。</p>
+    </div>
+    <div class="tabs" role="group" aria-label="模式">
+      <button id="m-learn" type="button" aria-pressed="true">学习</button>
+      <button id="m-say" type="button" aria-pressed="false">看字说出来</button>
+      <button id="m-ear" type="button" aria-pressed="false">听音找字</button>
+      <button id="m-pic" type="button" aria-pressed="false">看图找字</button>
+    </div>
+  </header>
+
+  <div class="switches">
+    <div class="tabs" role="group" aria-label="选哪一组" id="groups"></div>
+    <button class="pill" id="py" type="button" aria-pressed="false">拼音：隐藏</button>
+    <button class="pill" id="reset" type="button">全部翻回正面</button>
+  </div>
+
+  <main class="grid" id="grid" aria-label="汉字卡片"></main>
+
+  <section id="testbox" hidden>
+    <div class="test" id="test">
+      <div class="progress">
+        <div class="progress-row"><span id="count"></span><span id="right"></span></div>
+        <div class="bar"><i id="bar"></i></div>
+      </div>
+      <div id="qslot"></div>
+    </div>
+    <section class="result" id="result" hidden aria-live="polite"></section>
+  </section>
+</div>
+
+<script>
+const GROUPS = ["田土天地云雨", "风花虫鸟子儿", "人口手足耳目", "飞会禾不文白", "皮台东南西北"];
+// Each character: pinyin, a picture, and a short word that uses it
+const CHARS = {
+  田: ["tián", "🚜", "种田"], 土: ["tǔ", "🌱", "泥土"], 天: ["tiān", "🌤️", "天空"],
+  地: ["dì", "🌍", "大地"], 云: ["yún", "☁️", "白云"], 雨: ["yǔ", "🌧️", "下雨"],
+  风: ["fēng", "🌬️", "大风"], 花: ["huā", "🌸", "花朵"], 虫: ["chóng", "🐛", "虫子"],
+  鸟: ["niǎo", "🐦", "小鸟"], 子: ["zǐ", "👶", "孩子"], 儿: ["ér", "🧒", "儿童"],
+  人: ["rén", "🧍", "大人"], 口: ["kǒu", "👄", "张口"], 手: ["shǒu", "✋", "小手"],
+  足: ["zú", "🦶", "足球"], 耳: ["ěr", "👂", "耳朵"], 目: ["mù", "👁️", "目光"],
+  飞: ["fēi", "✈️", "飞机"], 会: ["huì", "🙋", "我会"], 禾: ["hé", "🌾", "禾苗"],
+  不: ["bù", "🙅", "不要"], 文: ["wén", "📖", "语文"], 白: ["bái", "⬜", "白色"],
+  皮: ["pí", "🏐", "皮球"], 台: ["tái", "🎤", "上台"], 东: ["dōng", "🌅", "东方"],
+  南: ["nán", "🎃", "南瓜"], 西: ["xī", "🍉", "西瓜"], 北: ["běi", "🐻‍❄️", "北极熊"]
+};
+
+const $ = id => document.getElementById(id);
+let mode = "learn";
+let group = 0;            // index into GROUPS, or -1 for all
+let showPy = false;
+
+const chars = () => (group < 0 ? GROUPS.join("") : GROUPS[group]).split("");
+const info = c => ({ c, py: CHARS[c][0], e: CHARS[c][1], w: CHARS[c][2] });
+const wordHtml = (w, c) => w.replace(c, "<b>" + c + "</b>");
+const tzg = c => '<div class="tzg"><span class="han">' + c + '</span></div>';
+
+function speak(text) {
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-CN"; u.rate = 0.8;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+// "西，西瓜的西": the usual way to name a character aloud
+const sayChar = x => speak(x.c + "，" + x.w + "的" + x.c);
+
+function shuffled(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+function btn(label, cls, fn) {
+  const b = el("button", cls);
+  b.type = "button"; b.textContent = label;
+  b.addEventListener("click", fn);
+  return b;
+}
+
+/* ---------- Cards ---------- */
+function makeCard(x, onFlip) {
+  const b = el("button", "card",
+    '<div class="inner">' +
+      '<div class="face">' + tzg(x.c) + (showPy ? '<div class="py">' + x.py + '</div>' : '') + '</div>' +
+      '<div class="face back"><div class="emoji" aria-hidden="true">' + x.e + '</div>' +
+        '<div class="word">' + wordHtml(x.w, x.c) + '</div><div class="py">' + x.py + '</div></div>' +
+    '</div>');
+  b.type = "button";
+  b.setAttribute("aria-label", "汉字卡片，点一下翻面");
+  b.addEventListener("click", () => {
+    const flipped = b.classList.toggle("flipped");
+    b.setAttribute("aria-label", flipped ? x.c + "，" + x.w : "汉字卡片，点一下翻面");
+    if (flipped) sayChar(x);
+    if (onFlip) onFlip(flipped);
+  });
+  return b;
+}
+function renderGrid() {
+  const grid = $("grid");
+  grid.innerHTML = "";
+  chars().forEach(c => grid.appendChild(makeCard(info(c))));
+}
+
+/* ---------- Tests ---------- */
+const T = { qs: [], i: 0, right: 0, missed: [] };
+
+function startTest(list) {
+  T.qs = list; T.i = 0; T.right = 0; T.missed = [];
+  $("result").hidden = true;
+  $("test").hidden = false;
+  showQuestion();
+}
+function newRound() {
+  const list = shuffled(chars()).map(info);
+  startTest(mode === "say" ? list : list.slice(0, 10));
+}
+function showQuestion() {
+  const n = T.qs.length;
+  $("count").textContent = "第 " + (T.i + 1) + " 题，共 " + n + " 题";
+  $("right").textContent = "答对 " + T.right;
+  $("bar").style.width = (T.i / n * 100) + "%";
+  const slot = $("qslot");
+  slot.innerHTML = "";
+  const q = T.qs[T.i];
+  slot.appendChild(mode === "say" ? sayQuestion(q) : pickQuestion(q));
+}
+function record(ok) {
+  if (ok) T.right++; else T.missed.push(T.qs[T.i]);
+  $("right").textContent = "答对 " + T.right;
+}
+function advance() {
+  T.i++;
+  if (T.i < T.qs.length) showQuestion(); else showResult();
+}
+
+function sayQuestion(x) {
+  const box = el("div", "test flip");
+  box.appendChild(el("div", "prompt", "这是什么字？先说出来，再翻开看"));
+  const actions = el("div", "actions");
+  const card = makeCard(x, flipped => {
+    if (!flipped) return;
+    actions.innerHTML = "";
+    actions.append(
+      btn("✓ 认对了", "big good", () => { record(true); advance(); }),
+      btn("✗ 没认出", "big miss", () => { record(false); advance(); })
+    );
+  });
+  actions.appendChild(btn("翻开看答案", "big", () => card.click()));
+  box.append(card, actions);
+  setTimeout(() => card.focus({ preventScroll: true }), 0);
+  return box;
+}
+
+// "ear": hear the character, pick it; "pic": see the picture, pick the character
+function pickQuestion(x) {
+  const stage = el("div", "stage");
+  if (mode === "ear") {
+    stage.appendChild(el("div", "prompt", "听一听，点出这个字"));
+    const l = btn("🔊", "listen", () => sayChar(x));
+    l.setAttribute("aria-label", "再听一遍");
+    stage.appendChild(l);
+    setTimeout(() => sayChar(x), 250);
+  } else {
+    stage.appendChild(el("div", "prompt", "这是什么？点出它的字"));
+    stage.appendChild(el("div", "q-emoji", x.e));
+  }
+  const pool = chars().length >= 3 ? chars() : GROUPS.join("").split("");
+  const opts = shuffled([x.c, ...shuffled(pool.filter(c => c !== x.c)).slice(0, 2)]);
+  const choices = el("div", "choices");
+  const feedback = el("div", "feedback");
+  opts.forEach(c => {
+    const b = el("button", "choice", tzg(c));
+    b.type = "button";
+    b.dataset.c = c;
+    b.setAttribute("aria-label", "选 " + c);
+    b.addEventListener("click", () => {
+      const ok = c === x.c;
+      choices.querySelectorAll(".choice").forEach(o => {
+        o.disabled = true;
+        if (o.dataset.c === x.c) o.classList.add("right");
+        else if (o === b) o.classList.add("wrong");
+      });
+      feedback.className = "feedback " + (ok ? "ok" : "no");
+      feedback.innerHTML = (ok ? "答对了！" : "是这个字：") + x.e + " " + wordHtml(x.w, x.c) + "的“" + x.c + "”";
+      sayChar(x);
+      record(ok);
+      stage.appendChild(btn(T.i + 1 < T.qs.length ? "下一题 →" : "看成绩", "big", advance));
+    });
+    choices.appendChild(b);
+  });
+  stage.append(choices, feedback);
+  return stage;
+}
+
+function showResult() {
+  $("bar").style.width = "100%";
+  $("test").hidden = true;
+  const n = T.qs.length, r = T.right;
+  const box = $("result");
+  box.hidden = false;
+  box.innerHTML =
+    '<div class="score">' + r + '<small> / ' + n + '</small></div>' +
+    '<p>' + (r === n ? "全部答对了，真棒！" : "答对了 " + r + " 题。下面这些字再练练：") + '</p>';
+  if (T.missed.length) {
+    const wrap = el("div", "missed");
+    T.missed.forEach(x => wrap.appendChild(el("div", "chip", tzg(x.c) + '<span aria-hidden="true">' + x.e + '</span>' + x.w)));
+    box.appendChild(wrap);
+  }
+  const acts = el("div", "actions");
+  if (T.missed.length) {
+    const missed = T.missed.slice();
+    acts.appendChild(btn("只练错的", "big miss", () => startTest(shuffled(missed))));
+  }
+  acts.appendChild(btn("再来一轮", "big", newRound));
+  acts.appendChild(btn("回去学习", "big", () => { mode = "learn"; refresh(); }));
+  box.appendChild(acts);
+}
+
+/* ---------- Switches ---------- */
+const HINTS = {
+  learn: "先看字，说一说是什么字；再点一下翻过来，看图和词。",
+  say: "一次一张：先说出这个字，再翻开看答案。",
+  ear: "听读音，从三个字里点出对的那个。",
+  pic: "看图片，从三个字里找出对的那个。"
+};
+function renderGroups() {
+  const box = $("groups");
+  box.innerHTML = "";
+  GROUPS.forEach((g, i) => {
+    const b = btn(g, "gchars", () => { group = i; refresh(); });
+    b.setAttribute("aria-pressed", group === i);
+    b.setAttribute("aria-label", "第 " + (i + 1) + " 组：" + g);
+    box.appendChild(b);
+  });
+  const all = btn("全部 30 个", "", () => { group = -1; refresh(); });
+  all.setAttribute("aria-pressed", group < 0);
+  box.appendChild(all);
+}
+function refresh() {
+  ["learn", "say", "ear", "pic"].forEach(m => $("m-" + m).setAttribute("aria-pressed", mode === m));
+  renderGroups();
+  $("py").setAttribute("aria-pressed", showPy);
+  $("py").textContent = showPy ? "拼音：显示" : "拼音：隐藏";
+  $("py").hidden = $("reset").hidden = mode !== "learn";
+  $("grid").hidden = mode !== "learn";
+  $("testbox").hidden = mode === "learn";
+  $("hint").textContent = HINTS[mode];
+  if (mode === "learn") renderGrid(); else newRound();
+}
+["learn", "say", "ear", "pic"].forEach(m => $("m-" + m).addEventListener("click", () => { mode = m; refresh(); }));
+$("py").addEventListener("click", () => { showPy = !showPy; refresh(); });
+$("reset").addEventListener("click", () => {
+  $("grid").querySelectorAll(".card.flipped").forEach(c => {
+    c.classList.remove("flipped");
+    c.setAttribute("aria-label", "汉字卡片，点一下翻面");
+  });
+});
+
+refresh();
+</script>
+</body>
+</html>
